@@ -1,0 +1,162 @@
+{% extends 'reception/base.html' %}
+
+{% block title %}قائمة المرضى{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- عنوان الصفحة وأزرار العمل -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0">
+            <i class="fas fa-users text-primary me-2"></i> قائمة المرضى
+        </h1>
+        <a href="#" class="btn btn-success">
+            <i class="fas fa-user-plus me-2"></i> إضافة مريض جديد
+        </a>
+    </div>
+    
+    <!-- شريط البحث -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-10">
+                    <div class="input-group">
+                        <span class="input-group-text">
+                            <i class="fas fa-search"></i>
+                        </span>
+                        <input type="text" 
+                               name="search" 
+                               class="form-control" 
+                               placeholder="ابحث باسم المريض، الهاتف، أو الرقم الوطني..."
+                               value="{{ search_query }}">
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-search me-2"></i> بحث
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- جدول المرضى -->
+    <div class="card">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th width="50">#</th>
+                            <th>الاسم الكامل</th>
+                            <th>الجنس</th>
+                            <th>العمر</th>
+                            <th>الهاتف</th>
+                            <th>الرقم الوطني</th>
+                            <th>تاريخ التسجيل</th>
+                            <th>عدد الطلبات</th>
+                            <th width="120">الإجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for patient in patients %}
+                        <tr>
+                            <td>{{ forloop.counter }}</td>
+                            <td>
+                                <strong>{{ patient.full_name }}</strong>
+                                {% if patient.referring_doctor %}
+                                <br>
+                                <small class="text-muted">
+                                    <i class="fas fa-user-md me-1"></i>
+                                    {{ patient.referring_doctor.name }}
+                                </small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge {% if patient.gender == 'M' %}bg-info{% else %}bg-pink{% endif %}">
+                                    {{ patient.get_gender_display }}
+                                </span>
+                            </td>
+                            <td>{{ patient.age|default:"-" }}</td>
+                            <td>
+                                {% if patient.phone %}
+                                <a href="tel:{{ patient.phone }}" class="text-decoration-none">
+                                    <i class="fas fa-phone me-1"></i>
+                                    {{ patient.phone }}
+                                </a>
+                                {% else %}-{% endif %}
+                            </td>
+                            <td>{{ patient.national_id|default:"-" }}</td>
+                            <td>{{ patient.created_at|date:"Y-m-d" }}</td>
+                            <td>
+                                <span class="badge bg-secondary">
+                                    {{ patient.order_set.count }}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <a href="{% url 'reception:patient_detail' patient.id %}" 
+                                       class="btn btn-outline-primary" 
+                                       title="عرض التفاصيل">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <a href="#" class="btn btn-outline-warning" title="تعديل">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <a href="#" class="btn btn-outline-danger" title="حذف">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="9" class="text-center py-4">
+                                <div class="empty-state">
+                                    <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                                    <h5 class="text-muted">لا توجد بيانات</h5>
+                                    <p class="text-muted">لم يتم تسجيل أي مرضى بعد</p>
+                                    <a href="#" class="btn btn-primary mt-2">
+                                        <i class="fas fa-user-plus me-2"></i> إضافة أول مريض
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- معلومات التلخيص -->
+    {% if patients %}
+    <div class="mt-3 text-muted">
+        <small>
+            <i class="fas fa-info-circle me-1"></i>
+            عرض {{ patients.count }} من إجمالي {{ patients.count }} مريض
+        </small>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+    .table th {
+        font-weight: 600;
+        background-color: #f8f9fa;
+    }
+    
+    .badge.bg-pink {
+        background-color: #ff6b9d !important;
+        color: white;
+    }
+    
+    .empty-state {
+        padding: 3rem 0;
+        text-align: center;
+    }
+    
+    .btn-group-sm .btn {
+        padding: 0.25rem 0.5rem;
+    }
+</style>
+{% endblock %}

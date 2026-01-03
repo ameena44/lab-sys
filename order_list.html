@@ -1,0 +1,304 @@
+{% extends 'reception/base.html' %}
+
+{% block title %}قائمة الطلبات{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- عنوان الصفحة وأزرار العمل -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0">
+            <i class="fas fa-file-medical text-primary me-2"></i> قائمة الطلبات
+        </h1>
+        <a href="{% url 'reception:new_order' %}" class="btn btn-success">
+            <i class="fas fa-plus-circle me-2"></i> طلب جديد
+        </a>
+    </div>
+    
+    <!-- أدوات التصفية والبحث -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <!-- فلترة بالحالة -->
+                <div class="col-md-3">
+                    <label class="form-label">حالة الطلب</label>
+                    <select name="status" class="form-select" onchange="this.form.submit()">
+                        <option value="">جميع الحالات</option>
+                        <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>قيد الانتظار</option>
+                        <option value="processing" {% if status_filter == 'processing' %}selected{% endif %}>قيد المعالجة</option>
+                        <option value="completed" {% if status_filter == 'completed' %}selected{% endif %}>مكتمل</option>
+                        <option value="cancelled" {% if status_filter == 'cancelled' %}selected{% endif %}>ملغى</option>
+                    </select>
+                </div>
+                
+                <!-- فلترة بالتاريخ -->
+                <div class="col-md-3">
+                    <label class="form-label">التاريخ</label>
+                    <input type="date" 
+                           name="date" 
+                           class="form-control" 
+                           value="{{ date_filter }}"
+                           onchange="this.form.submit()">
+                </div>
+                
+                <!-- زر البحث -->
+                <div class="col-md-2">
+                    <label class="form-label">&nbsp;</label>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-filter me-2"></i> تصفية
+                    </button>
+                </div>
+                
+                <!-- زر إعادة التعيين -->
+                <div class="col-md-2">
+                    <label class="form-label">&nbsp;</label>
+                    <a href="{% url 'reception:order_list' %}" class="btn btn-outline-secondary w-100">
+                        <i class="fas fa-redo me-2"></i> إعادة تعيين
+                    </a>
+                </div>
+                
+                <!-- إحصائيات سريعة -->
+                <div class="col-md-2">
+                    <label class="form-label">&nbsp;</label>
+                    <div class="text-center">
+                        <small class="text-muted">
+                            <i class="fas fa-chart-bar me-1"></i>
+                            {{ orders.count }} طلب
+                        </small>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- جدول الطلبات -->
+    <div class="card">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th width="80">#</th>
+                            <th>المريض</th>
+                            <th>رقم الطلب</th>
+                            <th>التاريخ</th>
+                            <th>الطبيب المحول</th>
+                            <th>التحاليل</th>
+                            <th>المبلغ</th>
+                            <th>الحالة</th>
+                            <th width="150">الإجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in orders %}
+                        <tr>
+                            <td>{{ forloop.counter }}</td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="avatar-sm me-2">
+                                        <div class="avatar-title bg-light rounded">
+                                            <i class="fas fa-user text-primary"></i>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <strong>{{ order.patient.full_name }}</strong>
+                                        <br>
+                                        <small class="text-muted">
+                                            <i class="fas fa-phone me-1"></i>
+                                            {{ order.patient.phone|default:"-" }}
+                                        </small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <strong>ORD-{{ order.id|stringformat:"04d" }}</strong>
+                                <br>
+                                <small class="text-muted">{{ order.created_at|date:"H:i" }}</small>
+                            </td>
+                            <td>
+                                {{ order.order_date|date:"Y-m-d" }}
+                                <br>
+                                <small class="text-muted">{{ order.order_date|timesince }} مضت</small>
+                            </td>
+                            <td>
+                                {% if order.referring_doctor %}
+                                <div>
+                                    <strong>{{ order.referring_doctor.name|truncatechars:20 }}</strong>
+                                    <br>
+                                    <small class="text-muted">{{ order.referring_doctor.specialty|default:"-" }}</small>
+                                </div>
+                                {% else %}-{% endif %}
+                            </td>
+                            <td>
+                                {% with order.orderdetail_set.count as test_count %}
+                                <span class="badge bg-secondary">{{ test_count }}</span>
+                                <small class="text-muted">تحليل</small>
+                                {% endwith %}
+                            </td>
+                            <td>
+                                <strong class="text-success">{{ order.total_amount|floatformat:2 }}</strong> د.ع
+                                {% if order.payment_status == 'paid' %}
+                                <br>
+                                <small class="badge bg-success">مدفوع</small>
+                                {% elif order.payment_status == 'partial' %}
+                                <br>
+                                <small class="badge bg-warning">جزئي</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if order.status == 'pending' %}
+                                <span class="badge bg-warning">قيد الانتظار</span>
+                                {% elif order.status == 'processing' %}
+                                <span class="badge bg-info">قيد المعالجة</span>
+                                {% elif order.status == 'completed' %}
+                                <span class="badge bg-success">مكتمل</span>
+                                {% elif order.status == 'cancelled' %}
+                                <span class="badge bg-danger">ملغى</span>
+                                {% else %}
+                                <span class="badge bg-secondary">{{ order.get_status_display }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <a href="{% url 'reception:order_detail' order.id %}" 
+                                       class="btn btn-outline-primary" 
+                                       title="عرض التفاصيل">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <a href="#" class="btn btn-outline-warning" title="تعديل">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <a href="#" class="btn btn-outline-success" title="طباعة">
+                                        <i class="fas fa-print"></i>
+                                    </a>
+                                    {% if order.status == 'pending' %}
+                                    <a href="#" class="btn btn-outline-danger" title="إلغاء">
+                                        <i class="fas fa-times"></i>
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="9" class="text-center py-5">
+                                <div class="empty-state">
+                                    <i class="fas fa-file-medical fa-3x text-muted mb-3"></i>
+                                    <h5 class="text-muted">لا توجد طلبات</h5>
+                                    <p class="text-muted">
+                                        {% if status_filter or date_filter %}
+                                        لا توجد طلبات مطابقة لمعايير البحث
+                                        {% else %}
+                                        لم يتم إنشاء أي طلبات بعد
+                                        {% endif %}
+                                    </p>
+                                    <a href="{% url 'reception:new_order' %}" class="btn btn-primary mt-2">
+                                        <i class="fas fa-plus-circle me-2"></i> إنشاء أول طلب
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- معلومات التلخيص -->
+    {% if orders %}
+    <div class="row mt-3">
+        <div class="col-md-12">
+            <div class="alert alert-info d-flex justify-content-between align-items-center">
+                <div>
+                    <i class="fas fa-info-circle me-2"></i>
+                    عرض <strong>{{ orders.count }}</strong> طلب
+                    {% if status_filter %}
+                    | حالة: <strong>{{ status_filter }}</strong>
+                    {% endif %}
+                    {% if date_filter %}
+                    | تاريخ: <strong>{{ date_filter }}</strong>
+                    {% endif %}
+                </div>
+                <div>
+                    <small>
+                        {% now "Y-m-d H:i" %}
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+    .table th {
+        font-weight: 600;
+        background-color: #f8f9fa;
+        border-bottom: 2px solid #dee2e6;
+    }
+    
+    .avatar-sm {
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .avatar-title {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .empty-state {
+        padding: 3rem 0;
+        text-align: center;
+    }
+    
+    .btn-group-sm .btn {
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+    }
+    
+    .badge {
+        padding: 5px 10px;
+        font-weight: 500;
+    }
+    
+    .table-hover tbody tr:hover {
+        background-color: rgba(52, 152, 219, 0.05);
+    }
+    
+    .alert-info {
+        background-color: #d1ecf1;
+        border-color: #bee5eb;
+        color: #0c5460;
+    }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // تحديث الوقت المنقضي كل دقيقة
+        function updateTimes() {
+            const timeElements = document.querySelectorAll('.text-muted small');
+            timeElements.forEach(el => {
+                if (el.textContent.includes('مضت')) {
+                    // يمكن إضافة منطق لتحديث الوقت هنا
+                }
+            });
+        }
+        
+        // تحديث كل دقيقة
+        setInterval(updateTimes, 60000);
+        
+        // تفعيل أدوات التلميح (tooltips)
+        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[title]'));
+        tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+    });
+</script>
+{% endblock %}

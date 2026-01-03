@@ -1,0 +1,200 @@
+{% extends 'reception/settings/base_settings.html' %}
+
+{% block settings_content %}
+<div class="card shadow-sm">
+    <div class="card-header bg-white border-bottom">
+        <h4 class="mb-0">
+            <i class="fas fa-plus-circle me-2"></i>إضافة تحليل جديد
+        </h4>
+    </div>
+    
+    <form method="post">
+        {% csrf_token %}
+        
+        <div class="card-body">
+            <!-- رسائل التنبيه -->
+            {% if messages %}
+            <div class="mb-4">
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+            
+            <div class="row">
+                <!-- المعلومات الأساسية -->
+                <div class="col-md-6">
+                    <div class="card mb-4 border">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0">المعلومات الأساسية</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label">الاسم العربي <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" name="name_ar" required 
+                                       placeholder="أدخل الاسم العربي للتحليل">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">الاسم الإنجليزي <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" name="name" required 
+                                       placeholder="أدخل الاسم الإنجليزي للتحليل">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">كود التحليل <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" name="code" required 
+                                       placeholder="مثال: CBC, FBS, LFT">
+                                <small class="form-text text-muted">يجب أن يكون الكود فريداً</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- الفئة والإعدادات -->
+                <div class="col-md-6">
+                    <div class="card mb-4 border">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0">الفئة والإعدادات</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label">الفئة</label>
+                                <select class="form-select" name="category">
+                                    <option value="">اختر الفئة</option>
+                                    {% for category in categories %}
+                                    <option value="{{ category }}">{{ category }}</option>
+                                    {% endfor %}
+                                </select>
+                                <small class="form-text text-muted">يمكن تركها فارغة أو كتابة فئة جديدة</small>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">نوع العينة <span class="text-danger">*</span></label>
+                                <select class="form-select" name="sample_type" required>
+                                    {% for value, label in sample_type_choices %}
+                                    <option value="{{ value }}">{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">نوع النتيجة <span class="text-danger">*</span></label>
+                                <select class="form-select" name="result_type" required>
+                                    {% for value, label in result_type_choices %}
+                                    <option value="{{ value }}">{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- المعلومات الفنية -->
+                <div class="col-md-6">
+                    <div class="card mb-4 border">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0">المعلومات الفنية</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label">الوحدة</label>
+                                <input type="text" class="form-control" name="unit" 
+                                       placeholder="مثال: g/dL, mg/dL, IU/L">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">النطاق المرجعي</label>
+                                <input type="text" class="form-control" name="normal_range" 
+                                       placeholder="مثال: 13.5-17.5, 70-110, 0.5-1.2">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">مدة التنفيذ</label>
+                                <input type="text" class="form-control" name="turnaround_time" 
+                                       value="24 ساعة" 
+                                       placeholder="مثال: 24 ساعة، 4-6 ساعات">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- المعلومات المالية -->
+                <div class="col-md-6">
+                    <div class="card mb-4 border">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0">المعلومات المالية</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label">سعر التحليل (د.ع) <span class="text-danger">*</span></label>
+                                <input type="number" class="form-control" name="standard_price" 
+                                       value="0" min="0" step="0.01" required>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">التكلفة (د.ع)</label>
+                                <input type="number" class="form-control" name="cost" 
+                                       value="0" min="0" step="0.01">
+                                <small class="form-text text-muted">تكلفة التحليل على المختبر</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- المعلومات الإضافية -->
+                <div class="col-12">
+                    <div class="card mb-4 border">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0">معلومات إضافية</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">وصف التحليل</label>
+                                    <textarea class="form-control" name="description" rows="3" 
+                                              placeholder="وصف مختصر للتحليل..."></textarea>
+                                </div>
+                                
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">تعليمات التحضير</label>
+                                    <textarea class="form-control" name="instructions" rows="3" 
+                                              placeholder="تعليمات للمريض قبل التحليل..."></textarea>
+                                </div>
+                            </div>
+                            
+                            <div class="form-check form-switch mt-2">
+                                <input class="form-check-input" type="checkbox" name="is_active" id="isActive" checked>
+                                <label class="form-check-label" for="isActive">
+                                    التحليل نشط وجاهز للاستخدام
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- أزرار التحكم -->
+        <div class="card-footer bg-white border-top">
+            <div class="d-flex justify-content-between">
+                <a href="{% url 'reception:lab_tests_settings' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-right me-2"></i>العودة للقائمة
+                </a>
+                
+                <div>
+                    <button type="reset" class="btn btn-outline-danger me-2">
+                        <i class="fas fa-redo me-2"></i>مسح النموذج
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i>حفظ التحليل
+                    </button>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,409 @@
+{% extends 'reception/settings/base_settings.html' %}
+
+{% block settings_content %}
+<div class="card shadow-sm">
+    <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center">
+        <h4 class="mb-0">
+            <i class="fas fa-print me-2"></i>إعدادات طباعة التقارير
+        </h4>
+        <span class="badge bg-primary">عام</span>
+    </div>
+    
+    <form method="post" action="{% url 'reception:save_printing_settings' %}">
+        {% csrf_token %}
+        
+        <div class="card-body">
+            <!-- رسائل التنبيه -->
+            {% if messages %}
+            <div class="mb-4">
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+            
+            <div class="row">
+                <!-- إعدادات التنسيق -->
+                <div class="col-md-6">
+                    <div class="card mb-4 border">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0">
+                                <i class="fas fa-palette me-2"></i>إعدادات التنسيق
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label">حجم الخط:</label>
+                                <input type="range" class="form-range" name="font_size" min="8" max="16" 
+                                       value="{{ settings.font_size|cut:'pt' }}" id="fontSizeSlider">
+                                <div class="d-flex justify-content-between mt-2">
+                                    <small class="text-muted">صغير (8pt)</small>
+                                    <span id="fontSizeValue" class="fw-bold">{{ settings.font_size }}</span>
+                                    <small class="text-muted">كبير (16pt)</small>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">لون النص:</label>
+                                <div class="input-group">
+                                    <input type="color" class="form-control form-control-color" name="text_color" 
+                                           value="{{ settings.text_color }}" title="اختر لون النص">
+                                    <span class="input-group-text">{{ settings.text_color }}</span>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">لون الحدود:</label>
+                                <div class="input-group">
+                                    <input type="color" class="form-control form-control-color" name="border_color" 
+                                           value="{{ settings.border_color }}" title="اختر لون الحدود">
+                                    <span class="input-group-text">{{ settings.border_color }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- ألوان النتائج -->
+                <div class="col-md-6">
+                    <div class="card mb-4 border">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0">
+                                <i class="fas fa-fill-drip me-2"></i>ألوان النتائج
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label">لون النتيجة الطبيعية:</label>
+                                <div class="input-group">
+                                    <input type="color" class="form-control form-control-color" name="normal_color" 
+                                           value="{{ settings.normal_color }}" title="لون النتائج الطبيعية">
+                                    <span class="input-group-text">{{ settings.normal_color }}</span>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">لون النتيجة غير الطبيعية:</label>
+                                <div class="input-group">
+                                    <input type="color" class="form-control form-control-color" name="abnormal_color" 
+                                           value="{{ settings.abnormal_color }}" title="لون النتائج غير الطبيعية">
+                                    <span class="input-group-text">{{ settings.abnormal_color }}</span>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">لون النتيجة الحرجة:</label>
+                                <div class="input-group">
+                                    <input type="color" class="form-control form-control-color" name="critical_color" 
+                                           value="{{ settings.critical_color }}" title="لون النتائج الحرجة">
+                                    <span class="input-group-text">{{ settings.critical_color }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- الهيدر والفوتر -->
+                <div class="col-md-6">
+                    <div class="card mb-4 border">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0">
+                                <i class="fas fa-image me-2"></i>الهيدر والفوتر
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label">ارتفاع الهيدر:</label>
+                                <input type="range" class="form-range" name="header_height" min="0" max="150" 
+                                       value="{{ settings.header_height|cut:'px' }}" id="headerHeightSlider">
+                                <div class="d-flex justify-content-between mt-2">
+                                    <small class="text-muted">0px</small>
+                                    <span id="headerHeightValue" class="fw-bold">{{ settings.header_height }}</span>
+                                    <small class="text-muted">150px</small>
+                                </div>
+                                <small class="form-text text-muted">مساحة فارغة لإضافة صورة الهيدر</small>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">ارتفاع الفوتر:</label>
+                                <input type="range" class="form-range" name="footer_height" min="0" max="100" 
+                                       value="{{ settings.footer_height|cut:'px' }}" id="footerHeightSlider">
+                                <div class="d-flex justify-content-between mt-2">
+                                    <small class="text-muted">0px</small>
+                                    <span id="footerHeightValue" class="fw-bold">{{ settings.footer_height }}</span>
+                                    <small class="text-muted">100px</small>
+                                </div>
+                                <small class="form-text text-muted">مساحة فارغة لإضافة صورة الفوتر</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- إعدادات الجدول -->
+                <div class="col-md-6">
+                    <div class="card mb-4 border">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0">
+                                <i class="fas fa-table me-2"></i>إعدادات الجدول
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label">لون رأس الجدول:</label>
+                                <div class="input-group">
+                                    <input type="color" class="form-control form-control-color" name="table_header_color" 
+                                           value="{{ settings.table_header_color }}" title="لون رأس الجدول">
+                                    <span class="input-group-text">{{ settings.table_header_color }}</span>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">لون الصفوف الزوجية:</label>
+                                <div class="input-group">
+                                    <input type="color" class="form-control form-control-color" name="even_row_color" 
+                                           value="{{ settings.even_row_color }}" title="لون الصفوف الزوجية">
+                                    <span class="input-group-text">{{ settings.even_row_color }}</span>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" name="show_h_l" 
+                                           id="showHL" {% if settings.show_h_l %}checked{% endif %}>
+                                    <label class="form-check-label" for="showHL">
+                                        عرض مؤشر H/L
+                                    </label>
+                                    <small class="form-text text-muted d-block">
+                                        H للنتائج المرتفعة، L للنتائج المنخفضة
+                                    </small>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" name="show_reference_range" 
+                                           id="showReferenceRange" {% if settings.show_reference_range %}checked{% endif %}>
+                                    <label class="form-check-label" for="showReferenceRange">
+                                        عرض النطاق المرجعي
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- أزرار التحكم -->
+        <div class="card-footer bg-white border-top">
+            <div class="d-flex justify-content-between">
+                <button type="button" class="btn btn-outline-secondary" onclick="resetSettings()">
+                    <i class="fas fa-undo me-2"></i>استعادة الافتراضية
+                </button>
+                
+                <div>
+                    <a href="{% url 'reception:settings_dashboard' %}" class="btn btn-outline-secondary me-2">
+                        <i class="fas fa-times me-2"></i>إلغاء
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i>حفظ الإعدادات
+                    </button>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- المعاينة -->
+<div class="card shadow-sm mt-4">
+    <div class="card-header bg-light">
+        <h6 class="mb-0">
+            <i class="fas fa-eye me-2"></i>معاينة التقرير
+        </h6>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-8">
+                <div class="border rounded p-3" id="reportPreview" style="font-size: {{ settings.font_size }};">
+                    <!-- الهيدر -->
+                    <div class="text-center mb-3 border-bottom pb-2" 
+                         style="height: {{ settings.header_height }}; color: {{ settings.text_color }};">
+                        <h4>LABORATORY REPORT</h4>
+                        <small>Report No: TEST-001 | Date: 2024-12-31</small>
+                    </div>
+                    
+                    <!-- معلومات المريض -->
+                    <div class="mb-3" style="color: {{ settings.text_color }};">
+                        <strong>Patient:</strong> John Doe<br>
+                        <strong>Age/Sex:</strong> 35 / Male<br>
+                        <strong>Physician:</strong> Dr. Smith
+                    </div>
+                    
+                    <!-- جدول النتائج -->
+                    <table class="table table-bordered table-sm" 
+                           style="border-color: {{ settings.border_color }}; font-size: {{ settings.font_size }};">
+                        <thead style="background: {{ settings.table_header_color }}; color: {{ settings.text_color }};">
+                            <tr>
+                                <th>Test Name</th>
+                                <th>Result</th>
+                                <th>Unit</th>
+                                {% if settings.show_h_l %}
+                                <th>H/L</th>
+                                {% endif %}
+                                {% if settings.show_reference_range %}
+                                <th>Ref. Range</th>
+                                {% endif %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr style="color: {{ settings.text_color }};">
+                                <td>Hemoglobin</td>
+                                <td style="color: {{ settings.normal_color }};">14.5</td>
+                                <td>g/dL</td>
+                                {% if settings.show_h_l %}
+                                <td>-</td>
+                                {% endif %}
+                                {% if settings.show_reference_range %}
+                                <td>13.5-17.5</td>
+                                {% endif %}
+                            </tr>
+                            <tr style="background: {{ settings.even_row_color }}; color: {{ settings.text_color }};">
+                                <td>Glucose</td>
+                                <td style="color: {{ settings.abnormal_color }};">180</td>
+                                <td>mg/dL</td>
+                                {% if settings.show_h_l %}
+                                <td>H</td>
+                                {% endif %}
+                                {% if settings.show_reference_range %}
+                                <td>70-110</td>
+                                {% endif %}
+                            </tr>
+                        </tbody>
+                    </table>
+                    
+                    <!-- الفوتر -->
+                    <div class="text-center mt-3 border-top pt-2" 
+                         style="height: {{ settings.footer_height }}; color: {{ settings.text_color }};">
+                        <small>Report generated by Laboratory Management System</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="alert alert-info">
+                    <h6><i class="fas fa-info-circle me-2"></i>ملاحظات:</h6>
+                    <ul class="mb-0">
+                        <li>التغييرات تنطبق على جميع التقارير</li>
+                        <li>يمكن تعديل الإعدادات في أي وقت</li>
+                        <li>المعاينة توضح الشكل النهائي</li>
+                        <li>الهيدر والفوتر مساحات فارغة للصور</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // تحديث قيم السلايدرز
+    document.getElementById('fontSizeSlider').addEventListener('input', function() {
+        const value = this.value + 'pt';
+        document.getElementById('fontSizeValue').textContent = value;
+        document.getElementById('reportPreview').style.fontSize = value;
+    });
+    
+    document.getElementById('headerHeightSlider').addEventListener('input', function() {
+        const value = this.value + 'px';
+        document.getElementById('headerHeightValue').textContent = value;
+        document.getElementById('reportPreview').querySelector('.border-bottom').style.height = value;
+    });
+    
+    document.getElementById('footerHeightSlider').addEventListener('input', function() {
+        const value = this.value + 'px';
+        document.getElementById('footerHeightValue').textContent = value;
+        document.getElementById('reportPreview').querySelector('.border-top').style.height = value;
+    });
+    
+    // تحديث المعاينة عند تغيير الألوان
+    document.querySelectorAll('input[type="color"]').forEach(input => {
+        input.addEventListener('input', function() {
+            const colorName = this.name.replace('_color', '');
+            const value = this.value;
+            
+            if (colorName === 'text') {
+                document.getElementById('reportPreview').style.color = value;
+                document.getElementById('reportPreview').querySelectorAll('th, td').forEach(el => {
+                    el.style.color = value;
+                });
+            } else if (colorName === 'border') {
+                document.getElementById('reportPreview').querySelector('table').style.borderColor = value;
+            } else if (colorName === 'normal') {
+                document.getElementById('reportPreview').querySelector('td:nth-child(2)').style.color = value;
+            } else if (colorName === 'abnormal') {
+                document.getElementById('reportPreview').querySelector('tr:nth-child(2) td:nth-child(2)').style.color = value;
+            } else if (colorName === 'table-header') {
+                document.getElementById('reportPreview').querySelector('thead').style.background = value;
+            } else if (colorName === 'even-row') {
+                document.getElementById('reportPreview').querySelector('tr:nth-child(2)').style.background = value;
+            }
+            
+            // تحديث عرض القيمة
+            this.nextElementSibling.textContent = value;
+        });
+    });
+    
+    // تحديث المعاينة عند تغيير التبديلات
+    document.getElementById('showHL').addEventListener('change', function() {
+        const cells = document.getElementById('reportPreview').querySelectorAll('td:nth-child(4), th:nth-child(4)');
+        cells.forEach(cell => cell.style.display = this.checked ? 'table-cell' : 'none');
+    });
+    
+    document.getElementById('showReferenceRange').addEventListener('change', function() {
+        const cells = document.getElementById('reportPreview').querySelectorAll('td:nth-child(5), th:nth-child(5)');
+        cells.forEach(cell => cell.style.display = this.checked ? 'table-cell' : 'none');
+    });
+    
+    // استعادة الإعدادات الافتراضية
+    function resetSettings() {
+        if (confirm('هل تريد استعادة الإعدادات الافتراضية؟ سيتم فقدان التغييرات الحالية.')) {
+            // إعادة تعيين القيم
+            document.getElementById('fontSizeSlider').value = 10;
+            document.getElementById('fontSizeSlider').dispatchEvent(new Event('input'));
+            
+            document.getElementById('headerHeightSlider').value = 80;
+            document.getElementById('headerHeightSlider').dispatchEvent(new Event('input'));
+            
+            document.getElementById('footerHeightSlider').value = 60;
+            document.getElementById('footerHeightSlider').dispatchEvent(new Event('input'));
+            
+            // إعادة تعيين الألوان
+            const defaults = {
+                'text_color': '#000000',
+                'border_color': '#000000',
+                'normal_color': '#008000',
+                'abnormal_color': '#ff0000',
+                'critical_color': '#cc0000',
+                'table_header_color': '#f0f0f0',
+                'even_row_color': '#ffffff'
+            };
+            
+            Object.entries(defaults).forEach(([name, value]) => {
+                const input = document.querySelector(`input[name="${name}"]`);
+                if (input) {
+                    input.value = value;
+                    input.dispatchEvent(new Event('input'));
+                }
+            });
+            
+            // إعادة تعيين التبديلات
+            document.getElementById('showHL').checked = true;
+            document.getElementById('showHL').dispatchEvent(new Event('change'));
+            
+            document.getElementById('showReferenceRange').checked = true;
+            document.getElementById('showReferenceRange').dispatchEvent(new Event('change'));
+        }
+    }
+</script>
+{% endblock %}

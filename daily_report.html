@@ -1,0 +1,213 @@
+<!-- templates/reception/daily_report.html -->
+{% extends 'reception/base.html' %}
+
+{% block title %}التقرير اليومي - {{ report_date|date:"Y-m-d" }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- العنوان وأزرار التحكم -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="page-title">
+            <i class="fas fa-calendar-day me-2"></i>التقرير اليومي
+        </h1>
+        <div>
+            <form method="get" class="d-inline me-3">
+                <input type="date" name="date" value="{{ report_date|date:'Y-m-d' }}" 
+                       class="form-control d-inline w-auto" onchange="this.form.submit()">
+            </form>
+            <button onclick="window.print()" class="btn btn-primary">
+                <i class="fas fa-print me-1"></i> طباعة
+            </button>
+        </div>
+    </div>
+    
+    <!-- بطاقة الإحصائيات -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body text-center">
+                    <h1 class="display-4">{{ stats.total_orders }}</h1>
+                    <h6>إجمالي الطلبات</h6>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body text-center">
+                    <h1 class="display-4">{{ stats.completed_orders }}</h1>
+                    <h6>طلبات مكتملة</h6>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body text-center">
+                    <h1 class="display-4">{{ stats.pending_orders }}</h1>
+                    <h6>طلبات معلقة</h6>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body text-center">
+                    <h1 class="display-4">{{ stats.total_revenue|floatformat:2 }}</h1>
+                    <h6>الإيرادات (د.ع)</h6>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- جدول الطلبات اليومية -->
+    <div class="card">
+        <div class="card-header bg-white">
+            <h5 class="mb-0">
+                <i class="fas fa-list me-2"></i> طلبات تاريخ {{ report_date|date:"Y-m-d" }}
+            </h5>
+        </div>
+        <div class="card-body p-0">
+            {% if daily_orders %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>#</th>
+                            <th>رقم الطلب</th>
+                            <th>المريض</th>
+                            <th>الوقت</th>
+                            <th>عدد التحاليل</th>
+                            <th>المبلغ</th>
+                            <th>الحالة</th>
+                            <th>الإجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in daily_orders %}
+                        <tr>
+                            <td>{{ forloop.counter }}</td>
+                            <td>
+                                <strong>#{{ order.id }}</strong>
+                                {% if order.order_number %}
+                                <br><small class="text-muted">{{ order.order_number }}</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if order.patient %}
+                                {{ order.patient.full_name }}
+                                {% else %}-{% endif %}
+                            </td>
+                            <td>{{ order.order_date|time:"H:i" }}</td>
+                            <td>
+                                <span class="badge bg-info">{{ order.orderdetail_set.count }}</span>
+                            </td>
+                            <td>
+                                <strong>{{ order.total_amount|default:0|floatformat:2 }}</strong> د.ع
+                            </td>
+                            <td>
+                                {% if order.status == 'completed' %}
+                                <span class="badge bg-success">مكتمل</span>
+                                {% elif order.status == 'processing' %}
+                                <span class="badge bg-info">قيد المعالجة</span>
+                                {% elif order.status == 'pending' %}
+                                <span class="badge bg-warning">معلق</span>
+                                {% else %}
+                                <span class="badge bg-secondary">{{ order.status }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{% url 'reception:order_detail' order.id %}" 
+                                   class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">لا توجد طلبات</h5>
+                <p class="text-muted">لم يتم إنشاء أي طلبات في هذا التاريخ</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- ملخص التقرير -->
+    <div class="card mt-4">
+        <div class="card-header bg-white">
+            <h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i> ملخص التقرير</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <h6>معلومات أساسية:</h6>
+                    <ul class="list-unstyled">
+                        <li><i class="fas fa-calendar me-2"></i> التاريخ: {{ report_date|date:"Y-m-d" }}</li>
+                        <li><i class="fas fa-clock me-2"></i> وقت التقرير: {% now "H:i" %}</li>
+                        <li><i class="fas fa-user me-2"></i> عدد المرضى المميزين: {{ daily_orders|length }}</li>
+                    </ul>
+                </div>
+                <div class="col-md-6">
+                    <h6>التحليل المالي:</h6>
+                    <ul class="list-unstyled">
+                        <li><i class="fas fa-money-bill-wave me-2"></i> متوسط قيمة الطلب: 
+                            {% if stats.total_orders > 0 %}
+                            {{ stats.average_order_value|floatformat:2 }} د.ع
+                            {% else %}0.00 د.ع{% endif %}
+                        </li>
+                        <li><i class="fas fa-percentage me-2"></i> نسبة الإنجاز: 
+                            {% if stats.total_orders > 0 %}
+                            {{ stats.completed_orders|floatformat:0 }} / {{ stats.total_orders }} 
+                            ({{ stats.completed_orders|floatformat:0|add:"0"|divisibleby:stats.total_orders|floatformat:0 }}%)
+                            {% else %}0%{% endif %}
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- الفوتر للطباعة -->
+    <div class="mt-5 pt-4 border-top text-center text-muted d-print-block">
+        <p class="mb-1">
+            <strong>تقرير يومي - مختبر النخبة الطبي</strong>
+        </p>
+        <p class="mb-1">
+            تاريخ: {{ report_date|date:"Y-m-d" }}
+        </p>
+        <p class="mb-0">
+            تم إنشاؤه في: {% now "Y-m-d H:i" %}
+        </p>
+    </div>
+</div>
+
+<style>
+    @media print {
+        .btn, form, .d-print-none {
+            display: none !important;
+        }
+        
+        .card {
+            border: 1px solid #000 !important;
+        }
+        
+        .d-print-block {
+            display: block !important;
+        }
+    }
+    
+    .display-4 {
+        font-weight: 700;
+        margin-bottom: 10px;
+    }
+    
+    .page-title {
+        color: #2c3e50;
+        font-weight: 700;
+        border-bottom: 3px solid #3498db;
+        padding-bottom: 10px;
+    }
+</style>
+{% endblock %}

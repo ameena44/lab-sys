@@ -1,0 +1,306 @@
+{% extends 'reception/base.html' %}
+
+{% block title %}تفاصيل المريض - {{ patient.full_name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- شريط العودة -->
+    <div class="mb-4">
+        <a href="{% url 'reception:patient_list' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-right me-2"></i> العودة إلى قائمة المرضى
+        </a>
+    </div>
+    
+    <!-- بطاقة معلومات المريض الرئيسية -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <div class="d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">
+                    <i class="fas fa-user-circle me-2"></i> معلومات المريض
+                </h4>
+                <div class="btn-group">
+                    <a href="#" class="btn btn-light btn-sm">
+                        <i class="fas fa-edit me-1"></i> تعديل
+                    </a>
+                    <a href="#" class="btn btn-light btn-sm">
+                        <i class="fas fa-print me-1"></i> طباعة
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <!-- العمود الأيسر: المعلومات الأساسية -->
+                <div class="col-md-6">
+                    <table class="table table-borderless">
+                        <tr>
+                            <th width="150">الاسم الكامل:</th>
+                            <td>
+                                <strong>{{ patient.full_name }}</strong>
+                                <span class="badge {% if patient.gender == 'M' %}bg-info{% else %}bg-pink{% endif %} ms-2">
+                                    {{ patient.get_gender_display }}
+                                </span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>العمر:</th>
+                            <td>{{ patient.age|default:"غير محدد" }}</td>
+                        </tr>
+                        <tr>
+                            <th>تاريخ الميلاد:</th>
+                            <td>
+                                {% if patient.date_of_birth %}
+                                    {{ patient.date_of_birth|date:"Y-m-d" }}
+                                    ({{ patient.age }} سنة)
+                                {% else %}
+                                    غير محدد
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>الهاتف:</th>
+                            <td>
+                                {% if patient.phone %}
+                                <a href="tel:{{ patient.phone }}" class="text-decoration-none">
+                                    <i class="fas fa-phone me-1"></i>{{ patient.phone }}
+                                </a>
+                                {% else %}غير محدد{% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>البريد الإلكتروني:</th>
+                            <td>
+                                {% if patient.email %}
+                                <a href="mailto:{{ patient.email }}" class="text-decoration-none">
+                                    <i class="fas fa-envelope me-1"></i>{{ patient.email }}
+                                </a>
+                                {% else %}غير محدد{% endif %}
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+                
+                <!-- العمود الأيمن: المعلومات الإضافية -->
+                <div class="col-md-6">
+                    <table class="table table-borderless">
+                        <tr>
+                            <th width="150">الرقم الوطني:</th>
+                            <td>{{ patient.national_id|default:"غير محدد" }}</td>
+                        </tr>
+                        <tr>
+                            <th>العنوان:</th>
+                            <td>{{ patient.address|default:"غير محدد" }}</td>
+                        </tr>
+                        <tr>
+                            <th>الطبيب المحول:</th>
+                            <td>
+                                {% if patient.referring_doctor %}
+                                <a href="#" class="text-decoration-none">
+                                    <i class="fas fa-user-md me-1"></i>
+                                    {{ patient.referring_doctor.name }}
+                                    <small class="text-muted">({{ patient.referring_doctor.specialty }})</small>
+                                </a>
+                                {% else %}غير محدد{% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>الأمراض المزمنة:</th>
+                            <td>
+                                {% if patient.chronic_diseases %}
+                                <span class="badge bg-warning">{{ patient.chronic_diseases }}</span>
+                                {% else %}لا يوجد{% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>تاريخ التسجيل:</th>
+                            <td>
+                                <i class="fas fa-calendar me-1"></i>
+                                {{ patient.created_at|date:"Y-m-d H:i" }}
+                                <small class="text-muted">(منذ {{ patient.created_at|timesince }})</small>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- بطاقات الإحصائيات -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card border-primary">
+                <div class="card-body text-center">
+                    <h5 class="card-title text-muted">إجمالي الطلبات</h5>
+                    <h2 class="text-primary">{{ total_orders }}</h2>
+                    <small class="text-muted">طلب منذ التسجيل</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-success">
+                <div class="card-body text-center">
+                    <h5 class="card-title text-muted">الطلبات المكتملة</h5>
+                    <h2 class="text-success">{{ completed_orders }}</h2>
+                    <small class="text-muted">تم إصدار نتائجها</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-warning">
+                <div class="card-body text-center">
+                    <h5 class="card-title text-muted">إجمالي الإنفاق</h5>
+                    <h2 class="text-warning">{{ total_spent|floatformat:2 }}</h2>
+                    <small class="text-muted">دينار عراقي</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-info">
+                <div class="card-body text-center">
+                    <h5 class="card-title text-muted">متوسط الطلب</h5>
+                    <h2 class="text-info">
+                        {% if total_orders > 0 %}
+                            {% widthratio total_spent total_orders 1 as avg %}
+                            {{ avg|floatformat:2 }}
+                        {% else %}0.00{% endif %}
+                    </h2>
+                    <small class="text-muted">دينار/طلب</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- قسم الطلبات السابقة -->
+    <div class="card">
+        <div class="card-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-file-medical me-2"></i> الطلبات السابقة
+                </h5>
+                <a href="{% url 'reception:new_order' %}?patient_id={{ patient.id }}" 
+                   class="btn btn-success btn-sm">
+                    <i class="fas fa-plus-circle me-1"></i> إضافة طلب جديد
+                </a>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            {% if patient_orders %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th width="80">رقم الطلب</th>
+                            <th>التاريخ</th>
+                            <th>الطبيب المحول</th>
+                            <th>عدد التحاليل</th>
+                            <th>المبلغ</th>
+                            <th>الحالة</th>
+                            <th width="100">الإجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in patient_orders %}
+                        <tr>
+                            <td>
+                                <strong>#{{ order.id }}</strong>
+                            </td>
+                            <td>{{ order.order_date|date:"Y-m-d" }}</td>
+                            <td>
+                                {% if order.referring_doctor %}
+                                {{ order.referring_doctor.name }}
+                                {% else %}-{% endif %}
+                            </td>
+                            <td>
+                                <span class="badge bg-secondary">
+                                    {{ order.orderdetail_set.count }}
+                                </span>
+                            </td>
+                            <td>
+                                <strong>{{ order.total_amount|floatformat:2 }}</strong> د.ع
+                            </td>
+                            <td>
+                                {% if order.status == 'completed' %}
+                                <span class="badge bg-success">مكتمل</span>
+                                {% elif order.status == 'pending' %}
+                                <span class="badge bg-warning">قيد الانتظار</span>
+                                {% elif order.status == 'processing' %}
+                                <span class="badge bg-info">قيد المعالجة</span>
+                                {% else %}
+                                <span class="badge bg-secondary">{{ order.get_status_display }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{% url 'reception:order_detail' order.id %}" 
+                                   class="btn btn-outline-primary btn-sm" 
+                                   title="عرض التفاصيل">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-file-medical fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">لا توجد طلبات سابقة</h5>
+                <p class="text-muted">لم يتم إنشاء أي طلبات لهذا المريض بعد</p>
+                <a href="{% url 'reception:new_order' %}?patient_id={{ patient.id }}" 
+                   class="btn btn-primary mt-2">
+                    <i class="fas fa-plus-circle me-2"></i> إنشاء أول طلب
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- أزرار إضافية -->
+    <div class="mt-4 text-center">
+        <div class="btn-group" role="group">
+            <a href="{% url 'reception:new_order' %}?patient_id={{ patient.id }}" 
+               class="btn btn-success">
+                <i class="fas fa-plus-circle me-2"></i> طلب جديد
+            </a>
+            <a href="#" class="btn btn-warning">
+                <i class="fas fa-edit me-2"></i> تعديل البيانات
+            </a>
+            <a href="#" class="btn btn-info">
+                <i class="fas fa-print me-2"></i> طباعة البيانات
+            </a>
+            <a href="#" class="btn btn-danger">
+                <i class="fas fa-trash me-2"></i> حذف المريض
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+    .badge.bg-pink {
+        background-color: #ff6b9d !important;
+        color: white;
+    }
+    
+    .card-header.bg-primary {
+        background: linear-gradient(135deg, #2c3e50, #3498db) !important;
+    }
+    
+    .table th {
+        font-weight: 600;
+    }
+    
+    .table-borderless td, .table-borderless th {
+        border: none;
+        padding: 8px 0;
+    }
+    
+    .table-borderless tr:not(:last-child) {
+        border-bottom: 1px solid #f0f0f0;
+    }
+    
+    .btn-group .btn {
+        border-radius: 5px;
+        margin: 0 2px;
+    }
+</style>
+{% endblock %}

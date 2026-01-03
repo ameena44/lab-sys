@@ -1,0 +1,1323 @@
+{% extends 'reception/base.html' %}
+
+{% block title %}إنشاء طلب جديد{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- عنوان الصفحة -->
+    <div class="mb-4">
+        <h1 class="h3 mb-0">
+            <i class="fas fa-plus-circle text-success me-2"></i> إنشاء طلب جديد
+        </h1>
+        <p class="text-muted">أدخل بيانات الطلب الجديد خطوة بخطوة</p>
+    </div>
+    
+    <!-- رسائل الخطأ والنجاح -->
+    <div id="messages"></div>
+    
+    <!-- نموذج إنشاء الطلب -->
+    <form id="newOrderForm" method="post" action="{% url 'reception:new_order' %}">
+        {% csrf_token %}
+        
+        <!-- ============================================ -->
+        <!-- القسم 1: اختيار المريض -->
+        <!-- ============================================ -->
+        <div class="card mb-4" id="patientSection">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-user me-2"></i> 1. اختيار المريض
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <!-- بحث عن مريض موجود -->
+                    <div class="col-md-8">
+                        <div class="mb-3">
+                            <label class="form-label">البحث عن مريض مسجل</label>
+                            <div class="input-group">
+                                <input type="text" 
+                                       id="patientSearch" 
+                                       class="form-control" 
+                                       placeholder="ابحث بالاسم، الهاتف، أو الرقم الوطني..."
+                                       autocomplete="off">
+                                <button class="btn btn-outline-secondary" type="button" id="searchPatientBtn">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                            </div>
+                            <div id="patientSearchResults" class="mt-2" style="display: none;">
+                                <!-- نتائج البحث ستظهر هنا -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- أو إضافة مريض جديد -->
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">أو إضافة مريض جديد</label>
+                            <button type="button" 
+                                    class="btn btn-outline-success w-100" 
+                                    data-bs-toggle="modal" 
+                                    data-bs-target="#addPatientModal">
+                                <i class="fas fa-user-plus me-2"></i> إضافة مريض جديد
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- معلومات المريض المختار -->
+                <div id="selectedPatientInfo" class="alert alert-info mt-3" style="display: none;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong id="patientName"></strong>
+                            <br>
+                            <small id="patientDetails"></small>
+                        </div>
+                        <div>
+                            <input type="hidden" name="patient_id" id="selectedPatientId">
+                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearPatientSelection()">
+                                <i class="fas fa-times"></i> إلغاء الاختيار
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- ============================================ -->
+        <!-- القسم 2: اختيار الطبيب -->
+        <!-- ============================================ -->
+        <div class="card mb-4" id="doctorSection">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-user-md me-2"></i> 2. اختيار الطبيب المحول (اختياري)
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="mb-3">
+                            <label class="form-label">اختر الطبيب المحول</label>
+                            <select name="doctor_id" id="doctorSelect" class="form-select">
+                                <option value="">-- اختر الطبيب --</option>
+                                {% for doctor in doctors %}
+                                <option value="{{ doctor.id }}">{{ doctor.name }} - {{ doctor.specialty|default:"بدون تخصص" }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">&nbsp;</label>
+                            <button type="button" 
+                                    class="btn btn-outline-info w-100" 
+                                    data-bs-toggle="modal" 
+                                    data-bs-target="#addDoctorModal">
+                                <i class="fas fa-user-md me-2"></i> إضافة طبيب جديد
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- ============================================ -->
+        <!-- القسم 3: التحاليل الفردية -->
+        <!-- ============================================ -->
+        <div class="card mb-4" id="testsSection">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0">
+                    <i class="fas fa-flask me-2"></i> 3. اختيار التحاليل الفردية
+                </h5>
+            </div>
+            <div class="card-body">
+                <!-- شريط البحث في التحاليل -->
+                <div class="mb-4">
+                    <div class="input-group">
+                        <span class="input-group-text">
+                            <i class="fas fa-search"></i>
+                        </span>
+                        <input type="text" 
+                               id="testSearch" 
+                               class="form-control" 
+                               placeholder="ابحث عن تحليل بالاسم أو الكود..."
+                               autocomplete="off">
+                    </div>
+                </div>
+                
+                <!-- قائمة التحاليل -->
+                <div class="row" id="testsList">
+                    {% for test in lab_tests %}
+                    <div class="col-md-4 mb-3 test-item" data-name="{{ test.name }}" data-code="{{ test.code }}">
+                        <div class="card test-card">
+                            <div class="card-body">
+                                <div class="form-check">
+                                    <input class="form-check-input test-checkbox" 
+                                           type="checkbox" 
+                                           name="tests" 
+                                           value="{{ test.id }}" 
+                                           id="test_{{ test.id }}"
+                                           data-price="{{ test.price }}"
+                                           onchange="updateTotal()">
+                                    <label class="form-check-label w-100" for="test_{{ test.id }}">
+                                        <div class="d-flex justify-content-between">
+                                            <div>
+                                                <strong>{{ test.name }}</strong>
+                                                <br>
+                                                <small class="text-muted">كود: {{ test.code|default:"-" }}</small>
+                                            </div>
+                                            <div class="text-end">
+                                                <span class="text-success">{{ test.price|floatformat:2 }}</span> د.ع
+                                            </div>
+                                        </div>
+                                        {% if test.description %}
+                                        <small class="text-muted d-block mt-1">{{ test.description|truncatechars:50 }}</small>
+                                        {% endif %}
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                
+                <!-- ملخص التحاليل المختارة -->
+                <div class="mt-4" id="selectedTestsSummary" style="display: none;">
+                    <h6>التحاليل المختارة:</h6>
+                    <div id="selectedTestsList" class="mb-3"></div>
+                    <div class="alert alert-light">
+                        <strong>المجموع الجزئي: </strong>
+                        <span id="testsSubtotal" class="text-success">0.00</span> د.ع
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- ============================================ -->
+        <!-- القسم 4: حزم التحاليل -->
+        <!-- ============================================ -->
+        <div class="card mb-4" id="packagesSection">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-box me-2"></i> 4. اختيار حزم التحاليل (وفر حتى 30%)
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row" id="packagesList">
+                    <!-- حزمة الفحص الدوري -->
+                    <div class="col-md-6 mb-3">
+                        <div class="card package-card">
+                            <div class="card-body">
+                                <div class="form-check">
+                                    <input class="form-check-input package-checkbox" 
+                                           type="checkbox" 
+                                           name="packages" 
+                                           value="periodic" 
+                                           id="package_periodic"
+                                           data-tests="1,2,3"
+                                           data-price="55000"
+                                           data-original="70000"
+                                           onchange="togglePackage(this)">
+                                    <label class="form-check-label w-100" for="package_periodic">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div>
+                                                <h6 class="mb-1">حزمة الفحص الدوري</h6>
+                                                <small class="text-muted">CBC + سكر الدم + الكوليسترول</small>
+                                            </div>
+                                            <div class="text-end">
+                                                <span class="text-success">55,000</span> د.ع
+                                                <br>
+                                                <small class="text-danger"><s>70,000 د.ع</s></small>
+                                                <br>
+                                                <span class="badge bg-success">وفر 21%</span>
+                                            </div>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- حزمة وظائف الكبد -->
+                    <div class="col-md-6 mb-3">
+                        <div class="card package-card">
+                            <div class="card-body">
+                                <div class="form-check">
+                                    <input class="form-check-input package-checkbox" 
+                                           type="checkbox" 
+                                           name="packages" 
+                                           value="liver" 
+                                           id="package_liver"
+                                           data-tests="4,5,6"
+                                           data-price="85000"
+                                           data-original="120000"
+                                           onchange="togglePackage(this)">
+                                    <label class="form-check-label w-100" for="package_liver">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div>
+                                                <h6 class="mb-1">حزمة وظائف الكبد</h6>
+                                                <small class="text-muted">وظائف الكبد + إنزيمات الكبد</small>
+                                            </div>
+                                            <div class="text-end">
+                                                <span class="text-success">85,000</span> د.ع
+                                                <br>
+                                                <small class="text-danger"><s>120,000 د.ع</s></small>
+                                                <br>
+                                                <span class="badge bg-success">وفر 29%</span>
+                                            </div>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- حزمة الهرمونات -->
+                    <div class="col-md-6 mb-3">
+                        <div class="card package-card">
+                            <div class="card-body">
+                                <div class="form-check">
+                                    <input class="form-check-input package-checkbox" 
+                                           type="checkbox" 
+                                           name="packages" 
+                                           value="hormones" 
+                                           id="package_hormones"
+                                           data-tests="7,8,9"
+                                           data-price="120000"
+                                           data-original="150000"
+                                           onchange="togglePackage(this)">
+                                    <label class="form-check-label w-100" for="package_hormones">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div>
+                                                <h6 class="mb-1">حزمة الهرمونات</h6>
+                                                <small class="text-muted">الغدة الدرقية + هرمونات الذكورة/الأنوثة</small>
+                                            </div>
+                                            <div class="text-end">
+                                                <span class="text-success">120,000</span> د.ع
+                                                <br>
+                                                <small class="text-danger"><s>150,000 د.ع</s></small>
+                                                <br>
+                                                <span class="badge bg-success">وفر 20%</span>
+                                            </div>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- حزمة الحمل -->
+                    <div class="col-md-6 mb-3">
+                        <div class="card package-card">
+                            <div class="card-body">
+                                <div class="form-check">
+                                    <input class="form-check-input package-checkbox" 
+                                           type="checkbox" 
+                                           name="packages" 
+                                           value="pregnancy" 
+                                           id="package_pregnancy"
+                                           data-tests="10,11,12"
+                                           data-price="95000"
+                                           data-original="130000"
+                                           onchange="togglePackage(this)">
+                                    <label class="form-check-label w-100" for="package_pregnancy">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div>
+                                                <h6 class="mb-1">حزمة الحمل</h6>
+                                                <small class="text-muted">فحص الحمل + فحوصات ما قبل الولادة</small>
+                                            </div>
+                                            <div class="text-end">
+                                                <span class="text-success">95,000</span> د.ع
+                                                <br>
+                                                <small class="text-danger"><s>130,000 د.ع</s></small>
+                                                <br>
+                                                <span class="badge bg-success">وفر 27%</span>
+                                            </div>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- ملخص الحزم المختارة -->
+                <div class="mt-4" id="selectedPackagesSummary" style="display: none;">
+                    <h6>الحزم المختارة:</h6>
+                    <div id="selectedPackagesList" class="mb-3"></div>
+                    <div class="alert alert-light">
+                        <strong>المجموع الجزئي: </strong>
+                        <span id="packagesSubtotal" class="text-success">0.00</span> د.ع
+                        <span class="text-danger ms-3" id="packagesSavings"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- ============================================ -->
+        <!-- القسم 5: الخصم والدفع -->
+        <!-- ============================================ -->
+        <div class="card mb-4" id="discountSection">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-percentage me-2"></i> 5. الخصم والدفع
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <!-- نوع الخصم -->
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">نوع الخصم</label>
+                        <select id="discountType" class="form-select" onchange="updateTotal()">
+                            <option value="none">لا يوجد خصم</option>
+                            <option value="percentage">نسبة مئوية %</option>
+                            <option value="fixed">مبلغ ثابت</option>
+                        </select>
+                    </div>
+                    
+                    <!-- قيمة الخصم -->
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label" id="discountLabel">قيمة الخصم</label>
+                        <div class="input-group">
+                            <input type="number" 
+                                   id="discountValue" 
+                                   class="form-control" 
+                                   value="0" 
+                                   min="0" 
+                                   step="0.01"
+                                   onchange="updateTotal()"
+                                   onkeyup="updateTotal()">
+                            <span class="input-group-text" id="discountSuffix">د.ع</span>
+                        </div>
+                    </div>
+                    
+                    <!-- طريقة الدفع -->
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">طريقة الدفع</label>
+                        <select name="payment_method" class="form-select">
+                            <option value="cash">نقداً</option>
+                            <option value="card">بطاقة ائتمان</option>
+                            <option value="insurance">تأمين</option>
+                            <option value="transfer">تحويل بنكي</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- الملاحظات -->
+                <div class="mb-3">
+                    <label class="form-label">ملاحظات</label>
+                    <textarea name="notes" class="form-control" rows="3" placeholder="أي ملاحظات إضافية حول الطلب..."></textarea>
+                </div>
+            </div>
+        </div>
+        
+        <!-- ============================================ -->
+        <!-- القسم 6: الملخص النهائي -->
+        <!-- ============================================ -->
+        <div class="card mb-4" id="summarySection">
+            <div class="card-header bg-dark text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-file-invoice me-2"></i> 6. الملخص النهائي
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-8">
+                        <table class="table table-borderless">
+                            <tr>
+                                <th width="200">المجموع الجزئي للتحاليل:</th>
+                                <td id="summaryTestsSubtotal" class="text-end">0.00 د.ع</td>
+                            </tr>
+                            <tr>
+                                <th>المجموع الجزئي للحزم:</th>
+                                <td id="summaryPackagesSubtotal" class="text-end">0.00 د.ع</td>
+                            </tr>
+                            <tr class="table-active">
+                                <th>المجموع قبل الخصم:</th>
+                                <td id="summarySubtotal" class="text-end fw-bold">0.00 د.ع</td>
+                            </tr>
+                            <tr>
+                                <th>الخصم:</th>
+                                <td id="summaryDiscount" class="text-end text-danger">0.00 د.ع</td>
+                            </tr>
+                            <tr class="table-success">
+                                <th>المجموع النهائي:</th>
+                                <td id="summaryTotal" class="text-end fs-5 fw-bold text-success">0.00 د.ع</td>
+                            </tr>
+                            <tr>
+                                <th>المدخرات:</th>
+                                <td id="summarySavings" class="text-end text-success">0.00 د.ع</td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="alert alert-info">
+                            <h6>معلومات مهمة:</h6>
+                            <ul class="mb-0">
+                                <li>النتائج خلال 24-48 ساعة</li>
+                                <li>يمكن استلام النتائج إلكترونياً</li>
+                                <li>صلاحية الطلب: 7 أيام</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- أزرار الإنهاء -->
+                <div class="d-flex justify-content-between mt-4">
+                    <button type="button" class="btn btn-outline-secondary" onclick="resetForm()">
+                        <i class="fas fa-redo me-2"></i> إعادة تعيين
+                    </button>
+                    
+                    <div>
+                        <button type="button" class="btn btn-warning me-2" onclick="printEstimate()">
+                            <i class="fas fa-print me-2"></i> طباعة تقديري
+                        </button>
+                        
+                        <button type="submit" class="btn btn-success" id="submitBtn" disabled>
+                            <i class="fas fa-save me-2"></i> إنشاء الطلب وطباعة الباركود
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- ============================================ -->
+<!-- نافذة منبثقة: إضافة مريض جديد -->
+<!-- ============================================ -->
+<div class="modal fade" id="addPatientModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-user-plus me-2"></i> إضافة مريض جديد
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addPatientForm">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">الاسم الكامل *</label>
+                            <input type="text" id="newPatientName" class="form-control" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">الهاتف *</label>
+                            <input type="tel" id="newPatientPhone" class="form-control" required>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">العمر</label>
+                            <input type="number" id="newPatientAge" class="form-control" min="0" max="150">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">الجنس</label>
+                            <select id="newPatientGender" class="form-select">
+                                <option value="M">ذكر</option>
+                                <option value="F">أنثى</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">تاريخ الميلاد</label>
+                            <input type="date" id="newPatientDob" class="form-control">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">الرقم الوطني/الهوية</label>
+                        <input type="text" id="newPatientNationalId" class="form-control">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">البريد الإلكتروني</label>
+                            <input type="email" id="newPatientEmail" class="form-control">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">العنوان</label>
+                        <textarea id="newPatientAddress" class="form-control" rows="2"></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">الأمراض المزمنة</label>
+                        <textarea id="newPatientChronic" class="form-control" rows="2" placeholder="إن وجدت..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i> إلغاء
+                </button>
+                <button type="button" class="btn btn-success" onclick="addNewPatient()">
+                    <i class="fas fa-save me-2"></i> حفظ وإضافة
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================ -->
+<!-- نافذة منبثقة: إضافة طبيب جديد -->
+<!-- ============================================ -->
+<div class="modal fade" id="addDoctorModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-user-md me-2"></i> إضافة طبيب جديد
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addDoctorForm">
+                    <div class="mb-3">
+                        <label class="form-label">اسم الطبيب *</label>
+                        <input type="text" id="newDoctorName" class="form-control" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">التخصص</label>
+                        <input type="text" id="newDoctorSpecialty" class="form-control" placeholder="مثل: باطنية، أطفال، عيون...">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">رقم الهاتف</label>
+                        <input type="tel" id="newDoctorPhone" class="form-control">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">البريد الإلكتروني</label>
+                        <input type="email" id="newDoctorEmail" class="form-control">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">العنوان/الموقع</label>
+                        <input type="text" id="newDoctorAddress" class="form-control">
+                    </div>
+                    
+                    <div class="form-check mb-3">
+                        <input type="checkbox" id="newDoctorIsActive" class="form-check-input" checked>
+                        <label class="form-check-label">الطبيب نشط</label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i> إلغاء
+                </button>
+                <button type="button" class="btn btn-info" onclick="addNewDoctor()">
+                    <i class="fas fa-save me-2"></i> حفظ وإضافة
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================ -->
+<!-- الأنماط (CSS) -->
+<!-- ============================================ -->
+<style>
+    /* أنماط عامة */
+    .card {
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+    
+    .card-header {
+        border-radius: 10px 10px 0 0 !important;
+    }
+    
+    /* أنماط التحاليل */
+    .test-card {
+        transition: all 0.3s;
+        border: 2px solid transparent;
+    }
+    
+    .test-card:hover {
+        border-color: #3498db;
+        transform: translateY(-2px);
+    }
+    
+    .test-checkbox:checked + label .test-card {
+        border-color: #2ecc71;
+        background-color: rgba(46, 204, 113, 0.05);
+    }
+    
+    /* أنماط الحزم */
+    .package-card {
+        transition: all 0.3s;
+        border: 2px solid transparent;
+    }
+    
+    .package-card:hover {
+        border-color: #2ecc71;
+        transform: translateY(-2px);
+    }
+    
+    .package-checkbox:checked + label .package-card {
+        border-color: #2ecc71;
+        background-color: rgba(46, 204, 113, 0.1);
+    }
+    
+    /* أنماط الجدول */
+    .table-borderless th {
+        font-weight: 600;
+        color: #2c3e50;
+    }
+    
+    .table-active {
+        background-color: rgba(52, 152, 219, 0.1) !important;
+    }
+    
+    /* تنسيق الأرقام */
+    .fs-5 { font-size: 1.25rem !important; }
+    .fw-bold { font-weight: 600 !important; }
+</style>
+
+<!-- ============================================ -->
+<!-- JavaScript الكامل -->
+<!-- ============================================ -->
+<script>
+// متغيرات عامة
+let selectedPatientId = null;
+let selectedTests = new Set();
+let selectedPackages = new Set();
+let packageTestsMap = {
+    'periodic': [1, 2, 3],
+    'liver': [4, 5, 6],
+    'hormones': [7, 8, 9],
+    'pregnancy': [10, 11, 12]
+};
+let packagePrices = {
+    'periodic': 55000,
+    'liver': 85000,
+    'hormones': 120000,
+    'pregnancy': 95000
+};
+let packageOriginalPrices = {
+    'periodic': 70000,
+    'liver': 120000,
+    'hormones': 150000,
+    'pregnancy': 130000
+};
+
+// عند تحميل الصفحة
+document.addEventListener('DOMContentLoaded', function() {
+    // تهيئة الحقول
+    updateDiscountField();
+    updateTotal();
+    
+    // تفعيل البحث عن المريض
+    setupPatientSearch();
+    
+    // تفعيل البحث عن التحاليل
+    setupTestSearch();
+    
+    // تفعيل إرسال النموذج
+    setupFormSubmit();
+});
+
+// ============================================
+// 1. إدارة اختيار المريض
+// ============================================
+
+function setupPatientSearch() {
+    const searchInput = document.getElementById('patientSearch');
+    const searchBtn = document.getElementById('searchPatientBtn');
+    const resultsDiv = document.getElementById('patientSearchResults');
+    
+    // البحث عند الكتابة
+    searchInput.addEventListener('input', function() {
+        if (this.value.length >= 2) {
+            searchPatients(this.value);
+        } else {
+            resultsDiv.style.display = 'none';
+        }
+    });
+    
+    // البحث عند الضغط على الزر
+    searchBtn.addEventListener('click', function() {
+        if (searchInput.value.length >= 2) {
+            searchPatients(searchInput.value);
+        }
+    });
+    
+    // إغلاق النتائج عند النقر خارجها
+    document.addEventListener('click', function(e) {
+        if (!resultsDiv.contains(e.target) && e.target !== searchInput && e.target !== searchBtn) {
+            resultsDiv.style.display = 'none';
+        }
+    });
+}
+
+async function searchPatients(query) {
+    const resultsDiv = document.getElementById('patientSearchResults');
+    
+    try {
+        // في الواقع، سيكون هذا طلب AJAX للخادم
+        // لكن لأجل العرض، سنستخدم بيانات وهمية
+        const mockPatients = [
+            {id: 1, name: 'محمد أحمد', phone: '07701234567', age: 35, gender: 'ذكر'},
+            {id: 2, name: 'فاطمة حسن', phone: '07707654321', age: 28, gender: 'أنثى'},
+            {id: 3, name: 'علي كريم', phone: '07709876543', age: 42, gender: 'ذكر'}
+        ];
+        
+        const filteredPatients = mockPatients.filter(p => 
+            p.name.includes(query) || 
+            p.phone.includes(query)
+        );
+        
+        if (filteredPatients.length > 0) {
+            let html = '<div class="list-group">';
+            filteredPatients.forEach(patient => {
+                html += `
+                    <a href="#" class="list-group-item list-group-item-action" onclick="selectPatient(${patient.id}, '${patient.name}', '${patient.phone}', ${patient.age}, '${patient.gender}')">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <strong>${patient.name}</strong>
+                                <br>
+                                <small class="text-muted">${patient.phone} | ${patient.age} سنة | ${patient.gender}</small>
+                            </div>
+                            <div>
+                                <i class="fas fa-chevron-left"></i>
+                            </div>
+                        </div>
+                    </a>
+                `;
+            });
+            html += '</div>';
+            
+            resultsDiv.innerHTML = html;
+            resultsDiv.style.display = 'block';
+        } else {
+            resultsDiv.innerHTML = `
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    لا توجد نتائج للبحث "${query}"
+                </div>
+            `;
+            resultsDiv.style.display = 'block';
+        }
+    } catch (error) {
+        console.error('Error searching patients:', error);
+        showMessage('حدث خطأ في البحث عن المرضى', 'danger');
+    }
+}
+
+function selectPatient(id, name, phone, age, gender) {
+    selectedPatientId = id;
+    
+    document.getElementById('selectedPatientId').value = id;
+    document.getElementById('patientName').textContent = name;
+    document.getElementById('patientDetails').textContent = `${phone} | ${age} سنة | ${gender}`;
+    
+    document.getElementById('selectedPatientInfo').style.display = 'block';
+    document.getElementById('patientSearchResults').style.display = 'none';
+    document.getElementById('patientSearch').value = '';
+    
+    validateForm();
+    showMessage('تم اختيار المريض بنجاح', 'success');
+}
+
+function clearPatientSelection() {
+    selectedPatientId = null;
+    
+    document.getElementById('selectedPatientId').value = '';
+    document.getElementById('selectedPatientInfo').style.display = 'none';
+    document.getElementById('patientSearch').value = '';
+    
+    validateForm();
+    showMessage('تم إلغاء اختيار المريض', 'warning');
+}
+
+// ============================================
+// 2. إدارة النوافذ المنبثقة
+// ============================================
+
+// إضافة مريض جديد
+function addNewPatient() {
+    const name = document.getElementById('newPatientName').value;
+    const phone = document.getElementById('newPatientPhone').value;
+    const age = document.getElementById('newPatientAge').value;
+    const gender = document.getElementById('newPatientGender').value;
+    
+    if (!name || !phone) {
+        showMessage('الاسم والهاتف مطلوبان', 'danger');
+        return;
+    }
+    
+    // في الواقع، سيكون هذا طلب AJAX لحفظ المريض
+    const newPatientId = Math.floor(Math.random() * 1000) + 100;
+    
+    // اختيار المريض الجديد مباشرة
+    selectPatient(newPatientId, name, phone, age, gender);
+    
+    // إغلاق النافذة
+    const modal = bootstrap.Modal.getInstance(document.getElementById('addPatientModal'));
+    modal.hide();
+    
+    // تفريغ الحقول
+    document.getElementById('newPatientName').value = '';
+    document.getElementById('newPatientPhone').value = '';
+    document.getElementById('newPatientAge').value = '';
+    document.getElementById('newPatientGender').value = 'M';
+    
+    showMessage('تم إضافة المريض بنجاح واختياره', 'success');
+}
+
+// إضافة طبيب جديد
+function addNewDoctor() {
+    const name = document.getElementById('newDoctorName').value;
+    const specialty = document.getElementById('newDoctorSpecialty').value;
+    const phone = document.getElementById('newDoctorPhone').value;
+    
+    if (!name) {
+        showMessage('اسم الطبيب مطلوب', 'danger');
+        return;
+    }
+    
+    // في الواقع، سيكون هذا طلب AJAX لحفظ الطبيب
+    const newDoctorId = Math.floor(Math.random() * 1000) + 100;
+    
+    // إضافة الطبيب الجديد للقائمة
+    const select = document.getElementById('doctorSelect');
+    const option = document.createElement('option');
+    option.value = newDoctorId;
+    option.textContent = `${name} - ${specialty || 'بدون تخصص'}`;
+    select.appendChild(option);
+    
+    // اختيار الطبيب الجديد
+    select.value = newDoctorId;
+    
+    // إغلاق النافذة
+    const modal = bootstrap.Modal.getInstance(document.getElementById('addDoctorModal'));
+    modal.hide();
+    
+    // تفريغ الحقول
+    document.getElementById('newDoctorName').value = '';
+    document.getElementById('newDoctorSpecialty').value = '';
+    document.getElementById('newDoctorPhone').value = '';
+    
+    showMessage('تم إضافة الطبيب بنجاح', 'success');
+}
+
+// ============================================
+// 3. إدارة التحاليل والحزم
+// ============================================
+
+function setupTestSearch() {
+    const searchInput = document.getElementById('testSearch');
+    
+    searchInput.addEventListener('input', function() {
+        const query = this.value.toLowerCase();
+        const testItems = document.querySelectorAll('.test-item');
+        
+        testItems.forEach(item => {
+            const name = item.getAttribute('data-name').toLowerCase();
+            const code = item.getAttribute('data-code')?.toLowerCase() || '';
+            
+            if (name.includes(query) || code.includes(query)) {
+                item.style.display = 'block';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    });
+}
+
+function updateSelectedTests() {
+    const checkboxes = document.querySelectorAll('.test-checkbox:checked');
+    selectedTests.clear();
+    
+    checkboxes.forEach(checkbox => {
+        selectedTests.add(parseInt(checkbox.value));
+    });
+    
+    updateTestsSummary();
+    updateTotal();
+}
+
+function updateTestsSummary() {
+    const summaryDiv = document.getElementById('selectedTestsSummary');
+    const listDiv = document.getElementById('selectedTestsList');
+    const subtotalSpan = document.getElementById('testsSubtotal');
+    
+    if (selectedTests.size > 0) {
+        let html = '<div class="list-group">';
+        let subtotal = 0;
+        
+        document.querySelectorAll('.test-checkbox:checked').forEach(checkbox => {
+            const testId = checkbox.value;
+            const label = checkbox.closest('label');
+            const testName = label.querySelector('strong').textContent;
+            const testPrice = parseFloat(checkbox.getAttribute('data-price'));
+            
+            html += `
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                        <i class="fas fa-flask text-primary me-2"></i>
+                        ${testName}
+                    </div>
+                    <div>
+                        <span class="text-success">${testPrice.toLocaleString()}</span> د.ع
+                        <button class="btn btn-sm btn-outline-danger ms-3" onclick="uncheckTest(${testId})">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            subtotal += testPrice;
+        });
+        
+        html += '</div>';
+        listDiv.innerHTML = html;
+        subtotalSpan.textContent = subtotal.toLocaleString('ar-EG', {minimumFractionDigits: 2});
+        summaryDiv.style.display = 'block';
+    } else {
+        summaryDiv.style.display = 'none';
+    }
+}
+
+function uncheckTest(testId) {
+    const checkbox = document.getElementById(`test_${testId}`);
+    if (checkbox) {
+        checkbox.checked = false;
+        updateSelectedTests();
+    }
+}
+
+function togglePackage(packageCheckbox) {
+    const packageId = packageCheckbox.value;
+    const testIds = packageTestsMap[packageId];
+    
+    if (packageCheckbox.checked) {
+        selectedPackages.add(packageId);
+        
+        // إلغاء اختيار التحاليل الفردية التي تتضمنها الحزمة
+        testIds.forEach(testId => {
+            const testCheckbox = document.getElementById(`test_${testId}`);
+            if (testCheckbox) {
+                testCheckbox.checked = false;
+                testCheckbox.disabled = true;
+            }
+        });
+    } else {
+        selectedPackages.delete(packageId);
+        
+        // تفعيل التحاليل الفردية مرة أخرى
+        testIds.forEach(testId => {
+            const testCheckbox = document.getElementById(`test_${testId}`);
+            if (testCheckbox) {
+                testCheckbox.disabled = false;
+            }
+        });
+    }
+    
+    updateSelectedTests();
+    updatePackagesSummary();
+    updateTotal();
+}
+
+function updatePackagesSummary() {
+    const summaryDiv = document.getElementById('selectedPackagesSummary');
+    const listDiv = document.getElementById('selectedPackagesList');
+    const subtotalSpan = document.getElementById('packagesSubtotal');
+    const savingsSpan = document.getElementById('packagesSavings');
+    
+    if (selectedPackages.size > 0) {
+        let html = '<div class="list-group">';
+        let subtotal = 0;
+        let originalTotal = 0;
+        
+        selectedPackages.forEach(packageId => {
+            const checkbox = document.getElementById(`package_${packageId}`);
+            const label = checkbox.closest('label');
+            const packageName = label.querySelector('h6').textContent;
+            const packagePrice = packagePrices[packageId];
+            const originalPrice = packageOriginalPrices[packageId];
+            
+            html += `
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                        <i class="fas fa-box text-success me-2"></i>
+                        ${packageName}
+                        <br>
+                        <small class="text-muted">توفير: ${((originalPrice - packagePrice) / originalPrice * 100).toFixed(0)}%</small>
+                    </div>
+                    <div>
+                        <span class="text-success">${packagePrice.toLocaleString()}</span> د.ع
+                        <br>
+                        <small class="text-danger"><s>${originalPrice.toLocaleString()} د.ع</s></small>
+                        <button class="btn btn-sm btn-outline-danger ms-3" onclick="uncheckPackage('${packageId}')">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            subtotal += packagePrice;
+            originalTotal += originalPrice;
+        });
+        
+        html += '</div>';
+        listDiv.innerHTML = html;
+        subtotalSpan.textContent = subtotal.toLocaleString('ar-EG', {minimumFractionDigits: 2});
+        
+        const savings = originalTotal - subtotal;
+        savingsSpan.textContent = `وفرت: ${savings.toLocaleString()} د.ع`;
+        
+        summaryDiv.style.display = 'block';
+    } else {
+        summaryDiv.style.display = 'none';
+    }
+}
+
+function uncheckPackage(packageId) {
+    const checkbox = document.getElementById(`package_${packageId}`);
+    if (checkbox) {
+        checkbox.checked = false;
+        togglePackage(checkbox);
+    }
+}
+
+// ============================================
+// 4. إدارة الخصم والحسابات
+// ============================================
+
+function updateDiscountField() {
+    const type = document.getElementById('discountType').value;
+    const label = document.getElementById('discountLabel');
+    const suffix = document.getElementById('discountSuffix');
+    const input = document.getElementById('discountValue');
+    
+    if (type === 'percentage') {
+        label.textContent = 'نسبة الخصم %';
+        suffix.textContent = '%';
+        input.max = 100;
+        input.step = 1;
+        input.value = 10; // قيمة افتراضية 10%
+    } else if (type === 'fixed') {
+        label.textContent = 'مبلغ الخصم';
+        suffix.textContent = 'د.ع';
+        input.max = '';
+        input.step = 0.01;
+        input.value = 0;
+    } else {
+        label.textContent = 'قيمة الخصم';
+        suffix.textContent = 'د.ع';
+        input.value = 0;
+    }
+}
+
+function updateTotal() {
+    // حساب مجموع التحاليل
+    let testsTotal = 0;
+    document.querySelectorAll('.test-checkbox:checked').forEach(checkbox => {
+        testsTotal += parseFloat(checkbox.getAttribute('data-price'));
+    });
+    
+    // حساب مجموع الحزم
+    let packagesTotal = 0;
+    let packagesSavings = 0;
+    selectedPackages.forEach(packageId => {
+        packagesTotal += packagePrices[packageId];
+        packagesSavings += (packageOriginalPrices[packageId] - packagePrices[packageId]);
+    });
+    
+    // المجموع قبل الخصم
+    const subtotal = testsTotal + packagesTotal;
+    
+    // حساب الخصم
+    let discount = 0;
+    const discountType = document.getElementById('discountType').value;
+    const discountValue = parseFloat(document.getElementById('discountValue').value) || 0;
+    
+    if (discountType === 'percentage') {
+        discount = subtotal * (discountValue / 100);
+    } else if (discountType === 'fixed') {
+        discount = Math.min(discountValue, subtotal);
+    }
+    
+    // المجموع النهائي
+    const total = Math.max(0, subtotal - discount);
+    
+    // تحديث العرض
+    document.getElementById('summaryTestsSubtotal').textContent = testsTotal.toLocaleString('ar-EG', {minimumFractionDigits: 2}) + ' د.ع';
+    document.getElementById('summaryPackagesSubtotal').textContent = packagesTotal.toLocaleString('ar-EG', {minimumFractionDigits: 2}) + ' د.ع';
+    document.getElementById('summarySubtotal').textContent = subtotal.toLocaleString('ar-EG', {minimumFractionDigits: 2}) + ' د.ع';
+    document.getElementById('summaryDiscount').textContent = '-' + discount.toLocaleString('ar-EG', {minimumFractionDigits: 2}) + ' د.ع';
+    document.getElementById('summaryTotal').textContent = total.toLocaleString('ar-EG', {minimumFractionDigits: 2}) + ' د.ع';
+    document.getElementById('summarySavings').textContent = `وفرت: ${packagesSavings.toLocaleString()} د.ع`;
+    
+    // تحديث التقديريات الجزئية
+    updateSelectedTests();
+    updatePackagesSummary();
+    
+    // التحقق من صحة النموذج
+    validateForm();
+}
+
+// ============================================
+// 5. إدارة النموذج
+// ============================================
+
+function setupFormSubmit() {
+    const form = document.getElementById('newOrderForm');
+    
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        if (!validateForm()) {
+            showMessage('يرجى ملء جميع الحقول المطلوبة', 'danger');
+            return;
+        }
+        
+        // تعطيل زر الإرسال
+        const submitBtn = document.getElementById('submitBtn');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> جاري إنشاء الطلب...';
+        
+        try {
+            // في الواقع، سيكون هذا طلب AJAX
+            // محاكاة تأخير الشبكة
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            // عرض رسالة النجاح
+            showMessage('تم إنشاء الطلب بنجاح! جاري التوجيه...', 'success');
+            
+            // محاكاة إنشاء الباركود
+            const orderId = Math.floor(Math.random() * 9000) + 1000;
+            
+            // التوجيه إلى صفحة تفاصيل الطلب
+            setTimeout(() => {
+                window.location.href = `/reception/orders/${orderId}/`;
+            }, 1500);
+            
+        } catch (error) {
+            console.error('Error creating order:', error);
+            showMessage('حدث خطأ في إنشاء الطلب', 'danger');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-save me-2"></i> إنشاء الطلب وطباعة الباركود';
+        }
+    });
+}
+
+function validateForm() {
+    const isValid = selectedPatientId !== null && 
+                   (selectedTests.size > 0 || selectedPackages.size > 0);
+    
+    const submitBtn = document.getElementById('submitBtn');
+    submitBtn.disabled = !isValid;
+    
+    return isValid;
+}
+
+function resetForm() {
+    if (confirm('هل أنت متأكد من إعادة تعيين النموذج؟ سيتم فقدان جميع البيانات.')) {
+        // إعادة تعيين المريض
+        clearPatientSelection();
+        
+        // إعادة تعيين التحاليل
+        document.querySelectorAll('.test-checkbox').forEach(checkbox => {
+            checkbox.checked = false;
+            checkbox.disabled = false;
+        });
+        selectedTests.clear();
+        
+        // إعادة تعيين الحزم
+        document.querySelectorAll('.package-checkbox').forEach(checkbox => {
+            checkbox.checked = false;
+        });
+        selectedPackages.clear();
+        
+        // إعادة تعيين الطبيب
+        document.getElementById('doctorSelect').value = '';
+        
+        // إعادة تعيين الخصم
+        document.getElementById('discountType').value = 'none';
+        document.getElementById('discountValue').value = 0;
+        updateDiscountField();
+        
+        // إعادة تعيين الملاحظات
+        document.querySelector('textarea[name="notes"]').value = '';
+        
+        // إعادة تعيين البحث
+        document.getElementById('testSearch').value = '';
+        document.querySelectorAll('.test-item').forEach(item => {
+            item.style.display = 'block';
+        });
+        
+        // تحديث الحسابات
+        updateTotal();
+        
+        showMessage('تم إعادة تعيين النموذج', 'info');
+    }
+}
+
+function printEstimate() {
+    if (!validateForm()) {
+        showMessage('يرجى ملء البيانات المطلوبة أولاً', 'warning');
+        return;
+    }
+    
+    // في الواقع، سيكون هذا طباعة للتقدير
+    const printContent = `
+        <html>
+        <head>
+            <title>تقدير سعر الطلب</title>
+            <style>
+                body { font-family: Arial, sans-serif; padding: 20px; }
+                .header { text-align: center; margin-bottom: 30px; }
+                .total { font-size: 24px; font-weight: bold; color: #2ecc71; }
+                table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+                th, td { padding: 10px; border-bottom: 1px solid #ddd; text-align: right; }
+                th { background-color: #f8f9fa; }
+            </style>
+        </head>
+        <body dir="rtl">
+            <div class="header">
+                <h2>تقدير سعر الطلب</h2>
+                <p>${new Date().toLocaleString('ar-EG')}</p>
+            </div>
+            <div id="estimateContent"></div>
+            <script>
+                window.print();
+                setTimeout(() => window.close(), 1000);
+            <\/script>
+        </body>
+        </html>
+    `;
+    
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    
+    showMessage('جاري فتح نافذة الطباعة...', 'info');
+}
+
+// ============================================
+// 6. وظائف مساعدة
+// ============================================
+
+function showMessage(text, type) {
+    const messagesDiv = document.getElementById('messages');
+    
+    const alert = document.createElement('div');
+    alert.className = `alert alert-${type} alert-dismissible fade show`;
+    alert.innerHTML = `
+        ${text}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    messagesDiv.appendChild(alert);
+    
+    // إزالة الرسالة بعد 5 ثوانٍ
+    setTimeout(() => {
+        alert.remove();
+    }, 5000);
+}
+</script>
+{% endblock %}

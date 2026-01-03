@@ -1,0 +1,261 @@
+{% extends 'reception/settings/base_settings.html' %}
+
+{% block settings_content %}
+<div class="card shadow-sm">
+    <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center">
+        <div>
+            <h4 class="mb-0">
+                <i class="fas fa-flask me-2"></i>إدارة التحاليل المخبرية
+            </h4>
+            <small class="text-muted">إضافة، تعديل، وحذف التحاليل المخبرية</small>
+        </div>
+        <div>
+            <span class="badge bg-light text-dark border me-2">
+                <i class="fas fa-vial"></i> إجمالي: {{ total_tests }}
+            </span>
+            <span class="badge bg-success me-2">
+                <i class="fas fa-check-circle"></i> نشطة: {{ active_tests }}
+            </span>
+            <span class="badge bg-secondary">
+                <i class="fas fa-times-circle"></i> غير نشطة: {{ inactive_tests }}
+            </span>
+        </div>
+    </div>
+    
+    <!-- شريط البحث والتصفية -->
+    <div class="card-body border-bottom">
+        <form method="get" class="row g-3">
+            <div class="col-md-4">
+                <div class="input-group">
+                    <span class="input-group-text bg-light">
+                        <i class="fas fa-search"></i>
+                    </span>
+                    <input type="text" class="form-control" name="search" 
+                           placeholder="بحث بالاسم العربي، الإنجليزي، أو الكود..." 
+                           value="{{ search_query }}">
+                </div>
+            </div>
+            
+            <div class="col-md-3">
+                <select class="form-select" name="category">
+                    <option value="">جميع الفئات</option>
+                    {% for category in categories %}
+                    <option value="{{ category }}" {% if category_filter == category %}selected{% endif %}>
+                        {{ category }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="col-md-3">
+                <select class="form-select" name="status">
+                    <option value="">جميع الحالات</option>
+                    <option value="active" {% if status_filter == 'active' %}selected{% endif %}>نشطة فقط</option>
+                    <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>غير نشطة فقط</option>
+                </select>
+            </div>
+            
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="fas fa-filter me-2"></i>تصفية
+                </button>
+            </div>
+        </form>
+    </div>
+    
+    <!-- أزرار الإجراءات -->
+    <div class="card-body border-bottom bg-light">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <a href="{% url 'reception:add_lab_test' %}" class="btn btn-success">
+                    <i class="fas fa-plus-circle me-2"></i>إضافة تحليل جديد
+                </a>
+                <a href="{% url 'reception:export_lab_tests' %}" class="btn btn-outline-secondary ms-2" target="_blank">
+                    <i class="fas fa-file-export me-2"></i>تصدير PDF
+                </a>
+            </div>
+            
+            <div>
+                {% if search_query or category_filter or status_filter %}
+                <a href="{% url 'reception:lab_tests_settings' %}" class="btn btn-outline-danger btn-sm">
+                    <i class="fas fa-times me-1"></i>مسح الفلتر
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- جدول التحاليل -->
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover table-striped mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th width="5%">#</th>
+                        <th width="25%">الاسم العربي</th>
+                        <th width="15%">الاسم الإنجليزي</th>
+                        <th width="10%">الكود</th>
+                        <th width="10%">الفئة</th>
+                        <th width="10%">نوع العينة</th>
+                        <th width="10%">السعر (د.ع)</th>
+                        <th width="10%">الحالة</th>
+                        <th width="5%">الإجراءات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for test in page_obj %}
+                    <tr>
+                        <td class="text-center">{{ forloop.counter|add:page_obj.start_index|add:"-1" }}</td>
+                        <td>
+                            <strong>{{ test.name_ar }}</strong>
+                            {% if test.description %}
+                            <br>
+                            <small class="text-muted">{{ test.description|truncatechars:50 }}</small>
+                            {% endif %}
+                            {% if test.normal_range %}
+                            <br>
+                            <small class="badge bg-info text-dark">{{ test.normal_range }}</small>
+                            {% endif %}
+                        </td>
+                        <td>{{ test.name }}</td>
+                        <td>
+                            <span class="badge bg-dark">{{ test.code }}</span>
+                        </td>
+                        <td>
+                            {% if test.category %}
+                            <span class="badge bg-primary">{{ test.category }}</span>
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge bg-secondary">{{ test.get_sample_type_display }}</span>
+                        </td>
+                        <td>
+                            <span class="fw-bold">{{ test.standard_price }}</span>
+                            {% if test.cost %}
+                            <br>
+                            <small class="text-muted">تكلفة: {{ test.cost }}</small>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if test.is_active %}
+                            <span class="badge bg-success">
+                                <i class="fas fa-check me-1"></i>نشط
+                            </span>
+                            {% else %}
+                            <span class="badge bg-danger">
+                                <i class="fas fa-times me-1"></i>غير نشط
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <a href="{% url 'reception:edit_lab_test' test.id %}" 
+                                   class="btn btn-outline-primary" 
+                                   title="تعديل">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <a href="{% url 'reception:toggle_lab_test_status' test.id %}" 
+                                   class="btn btn-outline-warning" 
+                                   title="{% if test.is_active %}تعطيل{% else %}تفعيل{% endif %}">
+                                    <i class="fas fa-power-off"></i>
+                                </a>
+                                <button type="button" 
+                                        class="btn btn-outline-danger" 
+                                        onclick="confirmDelete({{ test.id }}, '{{ test.name_ar }}')"
+                                        title="حذف">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9" class="text-center py-5">
+                            <i class="fas fa-flask fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">لا توجد تحاليل</h5>
+                            {% if search_query or category_filter or status_filter %}
+                            <p class="text-muted">لم يتم العثور على تحاليل تطابق معايير البحث</p>
+                            <a href="{% url 'reception:lab_tests_settings' %}" class="btn btn-outline-primary">
+                                <i class="fas fa-eye me-2"></i>عرض جميع التحاليل
+                            </a>
+                            {% else %}
+                            <p class="text-muted">لم يتم إضافة أي تحاليل حتى الآن</p>
+                            <a href="{% url 'reception:add_lab_test' %}" class="btn btn-primary">
+                                <i class="fas fa-plus-circle me-2"></i>إضافة أول تحليل
+                            </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <!-- الترقيم للصفحات -->
+    {% if page_obj.has_other_pages %}
+    <div class="card-footer bg-white">
+        <nav aria-label="Page navigation">
+            <ul class="pagination justify-content-center mb-0">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}{% if category_filter %}&category={{ category_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">
+                        <i class="fas fa-angle-double-left"></i>
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if category_filter %}&category={{ category_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">
+                        <i class="fas fa-angle-left"></i>
+                    </a>
+                </li>
+                {% endif %}
+                
+                {% for num in page_obj.paginator.page_range %}
+                    {% if num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                        {% if page_obj.number == num %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ num }}</span>
+                        </li>
+                        {% else %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if category_filter %}&category={{ category_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">
+                                {{ num }}
+                            </a>
+                        </li>
+                        {% endif %}
+                    {% endif %}
+                {% endfor %}
+                
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if category_filter %}&category={{ category_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">
+                        <i class="fas fa-angle-right"></i>
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}{% if category_filter %}&category={{ category_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">
+                        <i class="fas fa-angle-double-right"></i>
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+            
+            <p class="text-center text-muted mt-2 mb-0">
+                صفحة {{ page_obj.number }} من {{ page_obj.paginator.num_pages }} 
+                (عرض {{ page_obj.start_index }} إلى {{ page_obj.end_index }} من {{ total_tests }})
+            </p>
+        </nav>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+    function confirmDelete(testId, testName) {
+        if (confirm(`هل أنت متأكد من حذف التحليل "${testName}"؟\n\nملاحظة: لا يمكن حذف التحليل إذا كان مستخدم في طلبات سابقة.`)) {
+            window.location.href = `{% url 'reception:delete_lab_test' 0 %}`.replace('0', testId);
+        }
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,591 @@
+{% extends 'reception/base.html' %}
+
+{% block title %}تفاصيل الطلب - {{ order.order_number|default:order.id }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- شريط العودة والتحكم -->
+    <!-- أضف هذا الكود مع أزرار التحكم -->
+<div class="card mt-4">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0"><i class="fas fa-print me-2"></i>طباعة التقارير</h5>
+    </div>
+    <div class="card-body">
+        <div class="btn-group" role="group">
+            <a href="/reception/orders/{{ order.id }}/print/">
+               target="_blank"
+               class="btn btn-outline-primary">
+                <i class="fas fa-print me-2"></i>عرض للطباعة
+            </a>
+            
+            <a href="/reception/orders/{{ order.id }}/print/pdf/">
+               class="btn btn-outline-success">
+                <i class="fas fa-file-pdf me-2"></i>تحميل PDF
+            </a>
+            
+            {% if order.patient %}
+            <a href="/reception/patients/{{ order.patient.id }}/">
+               target="_blank"
+               class="btn btn-outline-info">
+                <i class="fas fa-user-md me-2"></i>تقرير المريض
+            </a>
+            {% endif %}
+            
+            
+        </div>
+    </div>
+</div>
+    
+    <!-- بطاقة معلومات الطلب الرئيسية -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <div class="d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">
+                    <i class="fas fa-file-medical me-2"></i> معلومات الطلب
+                </h4>
+                <div>
+                    <span class="badge {% if order.status == 'completed' %}bg-success
+                                      {% elif order.status == 'processing' %}bg-info
+                                      {% elif order.status == 'pending' %}bg-warning
+                                      {% else %}bg-secondary{% endif %} fs-6">
+                        {{ order.get_status_display }}
+                    </span>
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <!-- العمود الأيسر: معلومات أساسية -->
+                <div class="col-md-6">
+                    <table class="table table-borderless">
+                        <tr>
+                            <th width="140">رقم الطلب:</th>
+                            <td>
+                                <strong>#{{ order.id }}</strong>
+                                {% if order.order_number %}
+                                <small class="text-muted">({{ order.order_number }})</small>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>تاريخ الإنشاء:</th>
+                            <td>
+                                {{ order.order_date|date:"Y-m-d H:i" }}
+                                <small class="text-muted">({{ order.order_date|timesince }} مضت)</small>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>تاريخ التحديث:</th>
+                            <td>
+                                {% if order.updated_at %}
+                                {{ order.updated_at|date:"Y-m-d H:i" }}
+                                {% else %}-{% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>الملاحظات:</th>
+                            <td>{{ order.notes|default:"لا توجد ملاحظات" }}</td>
+                        </tr>
+                    </table>
+                </div>
+                
+                <!-- العمود الأيمن: معلومات مالية -->
+                <div class="col-md-6">
+                    <table class="table table-borderless">
+                        <tr>
+                            <th width="140">المبلغ الإجمالي:</th>
+                            <td>
+                                <strong class="fs-4 text-success">{{ order.total_amount|floatformat:2 }}</strong> د.ع
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>الخصم:</th>
+                            <td>
+                                {% if order.discount %}
+                                <span class="text-danger">-{{ order.discount|floatformat:2 }} د.ع</span>
+                                {% else %}0.00 د.ع{% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>المبلغ النهائي:</th>
+                            <td>
+                                {% with net_amount=order.total_amount|default:0|add:0 %}
+                                <strong class="fs-5">{{ net_amount|floatformat:2 }}</strong> د.ع
+                                {% endwith %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>حالة الدفع:</th>
+                            <td>
+                                {% if order.payment_status == 'paid' %}
+                                <span class="badge bg-success">مدفوع بالكامل</span>
+                                {% elif order.payment_status == 'partial' %}
+                                <span class="badge bg-warning">مدفوع جزئياً</span>
+                                {% else %}
+                                <span class="badge bg-secondary">غير مدفوع</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- صف معلومات المريض والطبيب -->
+    <div class="row mb-4">
+        <!-- بطاقة معلومات المريض -->
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-user me-2"></i> معلومات المريض
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if order.patient %}
+                    <div class="d-flex align-items-start">
+                        <div class="avatar-lg me-3">
+                            <div class="avatar-title bg-light-primary rounded">
+                                <i class="fas fa-user-injured fa-2x text-primary"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h5>{{ order.patient.full_name }}</h5>
+                            <table class="table table-sm table-borderless">
+                                <tr>
+                                    <td width="100">الهاتف:</td>
+                                    <td>
+                                        {% if order.patient.phone %}
+                                        <a href="tel:{{ order.patient.phone }}" class="text-decoration-none">
+                                            <i class="fas fa-phone me-1"></i>{{ order.patient.phone }}
+                                        </a>
+                                        {% else %}-{% endif %}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>العمر:</td>
+                                    <td>{{ order.patient.age|default:"-" }}</td>
+                                </tr>
+                                <tr>
+                                    <td>الجنس:</td>
+                                    <td>{{ order.patient.get_gender_display|default:"-" }}</td>
+                                </tr>
+                                <tr>
+                                    <td>الأمراض:</td>
+                                    <td>
+                                        {% if order.patient.chronic_diseases %}
+                                        <span class="badge bg-warning">{{ order.patient.chronic_diseases }}</span>
+                                        {% else %}-{% endif %}
+                                    </td>
+                                </tr>
+                            </table>
+                            <a href="{% url 'reception:patient_detail' order.patient.id %}" 
+                               class="btn btn-sm btn-outline-primary mt-2">
+                                <i class="fas fa-external-link-alt me-1"></i> عرض الملف الشخصي
+                            </a>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-user-slash fa-2x text-muted mb-3"></i>
+                        <p class="text-muted">لا توجد معلومات للمريض</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- بطاقة معلومات الطبيب -->
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-user-md me-2"></i> الطبيب المحول
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if order.referring_doctor %}
+                    <div class="d-flex align-items-start">
+                        <div class="avatar-lg me-3">
+                            <div class="avatar-title bg-light-success rounded">
+                                <i class="fas fa-user-md fa-2x text-success"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h5>{{ order.referring_doctor.name }}</h5>
+                            <table class="table table-sm table-borderless">
+                                <tr>
+                                    <td width="100">التخصص:</td>
+                                    <td>{{ order.referring_doctor.specialty|default:"غير محدد" }}</td>
+                                </tr>
+                                <tr>
+                                    <td>الهاتف:</td>
+                                    <td>
+                                        {% if order.referring_doctor.phone %}
+                                        <a href="tel:{{ order.referring_doctor.phone }}" class="text-decoration-none">
+                                            {{ order.referring_doctor.phone }}
+                                        </a>
+                                        {% else %}-{% endif %}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>البريد:</td>
+                                    <td>
+                                        {% if order.referring_doctor.email %}
+                                        <a href="mailto:{{ order.referring_doctor.email }}" class="text-decoration-none">
+                                            {{ order.referring_doctor.email }}
+                                        </a>
+                                        {% else %}-{% endif %}
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-user-md-slash fa-2x text-muted mb-3"></i>
+                        <p class="text-muted">لا يوجد طبيب محول</p>
+                        <button class="btn btn-sm btn-outline-success">
+                            <i class="fas fa-plus me-1"></i> إضافة طبيب
+                        </button>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- جدول التحاليل المطلوبة -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-flask me-2"></i> التحاليل المطلوبة
+                </h5>
+                <span class="badge bg-primary">
+                    {{ order_details.count }} تحليل
+                </span>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            {% if order_details %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th width="50">#</th>
+                            <th>اسم التحليل</th>
+                            <th>الكود</th>
+                            <th>السعر</th>
+                            <th>الحالة</th>
+                            <th>تاريخ النتيجة</th>
+                            <th>النتيجة</th>
+                            <th width="100">الإجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for detail in order_details %}
+                        <tr>
+                            <td>{{ forloop.counter }}</td>
+                            <td>
+                                <strong>{{ detail.lab_test.name }}</strong>
+                                {% if detail.lab_test.description %}
+                                <br>
+                                <small class="text-muted">{{ detail.lab_test.description|truncatechars:50 }}</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge bg-secondary">{{ detail.lab_test.code|default:"-" }}</span>
+                            </td>
+                            <td>
+                                <strong>{{ detail.price|floatformat:2 }}</strong> د.ع
+                            </td>
+                            <td>
+                                {% if detail.result %}
+                                <span class="badge bg-success">مكتمل</span>
+                                {% else %}
+                                <span class="badge bg-warning">بانتظار النتيجة</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if detail.result_date %}
+                                {{ detail.result_date|date:"Y-m-d H:i" }}
+                                {% else %}-{% endif %}
+                            </td>
+                            <td>
+                                {% if detail.result %}
+                                <span class="{% if detail.is_normal %}text-success{% else %}text-danger{% endif %}">
+                                    {{ detail.result }} {{ detail.unit|default:"" }}
+                                </span>
+                                {% if not detail.is_normal %}
+                                <br>
+                                <small class="text-danger">
+                                    <i class="fas fa-exclamation-triangle"></i> خارج النطاق
+                                </small>
+                                {% endif %}
+                                {% else %}-{% endif %}
+                            </td>
+                            <td>
+                                {% if not detail.result %}
+                                <button class="btn btn-sm btn-outline-success" onclick="addResult({{ detail.id }})">
+                                    <i class="fas fa-plus"></i> نتيجة
+                                </button>
+                                {% else %}
+                                <button class="btn btn-sm btn-outline-info" onclick="viewResult({{ detail.id }})">
+                                    <i class="fas fa-eye"></i> عرض
+                                </button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        
+                        <!-- صف المجموع -->
+                        <tr class="table-active">
+                            <td colspan="3" class="text-end">
+                                <strong>المجموع:</strong>
+                            </td>
+                            <td>
+                                <strong class="text-success">{{ order.total_amount|floatformat:2 }} د.ع</strong>
+                            </td>
+                            <td colspan="4"></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-flask fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">لا توجد تحاليل</h5>
+                <p class="text-muted">لم يتم إضافة أي تحاليل لهذا الطلب</p>
+                <a href="#" class="btn btn-primary mt-2">
+                    <i class="fas fa-plus me-2"></i> إضافة تحاليل
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- سجل النشاطات -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="fas fa-history me-2"></i> سجل النشاطات
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="timeline">
+                <div class="timeline-item">
+                    <div class="timeline-point"></div>
+                    <div class="timeline-content">
+                        <h6>تم إنشاء الطلب</h6>
+                        <p class="text-muted mb-1">
+                            <i class="fas fa-calendar me-1"></i>
+                            {{ order.order_date|date:"Y-m-d H:i" }}
+                        </p>
+                        <small>بواسطة: نظام الاستقبال</small>
+                    </div>
+                </div>
+                
+                {% if order.updated_at and order.updated_at != order.order_date %}
+                <div class="timeline-item">
+                    <div class="timeline-point"></div>
+                    <div class="timeline-content">
+                        <h6>تم تحديث الطلب</h6>
+                        <p class="text-muted mb-1">
+                            <i class="fas fa-calendar me-1"></i>
+                            {{ order.updated_at|date:"Y-m-d H:i" }}
+                        </p>
+                    </div>
+                </div>
+                {% endif %}
+                
+                <!-- يمكن إضافة المزيد من النشاطات هنا -->
+                <div class="timeline-item">
+                    <div class="timeline-point timeline-point-success"></div>
+                    <div class="timeline-content">
+                        <h6>آخر تحديث</h6>
+                        <p class="text-muted mb-1">
+                            <i class="fas fa-calendar me-1"></i>
+                            {% now "Y-m-d H:i" %}
+                        </p>
+                        <small>عرض التفاصيل</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .avatar-lg {
+        width: 60px;
+        height: 60px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .avatar-title {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .bg-light-primary {
+        background-color: rgba(52, 152, 219, 0.1) !important;
+    }
+    
+    .bg-light-success {
+        background-color: rgba(46, 204, 113, 0.1) !important;
+    }
+    
+    /* تنسيق الجدول */
+    .table-hover tbody tr:hover {
+        background-color: rgba(52, 152, 219, 0.05);
+    }
+    
+    /* تنسيق الجدول النشط */
+    .table-active {
+        background-color: rgba(0, 0, 0, 0.03) !important;
+        font-weight: 600;
+    }
+    
+    /* تنسيق الخط الزمني */
+    .timeline {
+        position: relative;
+        padding-left: 30px;
+    }
+    
+    .timeline-item {
+        position: relative;
+        padding-bottom: 20px;
+    }
+    
+    .timeline-point {
+        position: absolute;
+        left: -30px;
+        top: 0;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background-color: #3498db;
+    }
+    
+    .timeline-point-success {
+        background-color: #2ecc71;
+    }
+    
+    .timeline-content {
+        padding-bottom: 10px;
+        border-bottom: 1px solid #eee;
+    }
+    
+    .timeline-item:last-child .timeline-content {
+        border-bottom: none;
+    }
+    
+    .fs-4 { font-size: 1.5rem !important; }
+    .fs-5 { font-size: 1.25rem !important; }
+    .fs-6 { font-size: 1rem !important; }
+</style>
+
+<script>
+    function markAsProcessing() {
+        if (confirm('هل تريد تحويل حالة الطلب إلى "قيد المعالجة"؟')) {
+            // إرسال طلب AJAX لتحديث الحالة
+            fetch(`/api/orders/${ {{ order.id }} }/status/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({ status: 'processing' })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('حدث خطأ: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('حدث خطأ في الاتصال');
+            });
+        }
+    }
+    
+    function markAsCompleted() {
+        if (confirm('هل تريد تحويل حالة الطلب إلى "مكتمل"؟')) {
+            // إرسال طلب AJAX لتحديث الحالة
+            fetch(`/api/orders/${ {{ order.id }} }/status/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({ status: 'completed' })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('حدث خطأ: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('حدث خطأ في الاتصال');
+            });
+        }
+    }
+    
+    function addResult(detailId) {
+        // يمكن فتح نافذة منبثقة لإدخال النتيجة
+        const result = prompt('أدخل نتيجة التحليل:');
+        if (result !== null) {
+            // إرسال النتيجة
+            fetch(`/api/order-details/${detailId}/result/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({ result: result })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                }
+            });
+        }
+    }
+    
+    function viewResult(detailId) {
+        // عرض النتيجة الحالية
+        alert('عرض النتيجة - يمكن تطوير هذه الوظيفة لاحقاً');
+    }
+    
+    // دالة لاستخراج CSRF token
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+</script>
+{% endblock %}

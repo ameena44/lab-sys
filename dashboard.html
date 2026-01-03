@@ -1,0 +1,145 @@
+{% extends 'reception/base.html' %}
+
+{% block title %}لوحة التحكم - الاستقبال{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <!-- بطاقات الإحصائيات -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <h3><i class="fas fa-users text-primary"></i> إجمالي المرضى</h3>
+            <div class="number">{{ stats.total_patients }}</div>
+            <small>مرضى مسجلون في النظام</small>
+        </div>
+        
+        <div class="stat-card">
+            <h3><i class="fas fa-file-medical text-success"></i> إجمالي الطلبات</h3>
+            <div class="number">{{ stats.total_orders }}</div>
+            <small>طلب منذ بداية النظام</small>
+        </div>
+        
+        <div class="stat-card">
+            <h3><i class="fas fa-calendar-day text-warning"></i> طلبات اليوم</h3>
+            <div class="number">{{ stats.today_orders }}</div>
+            <small>طلب في تاريخ اليوم</small>
+        </div>
+        
+        <div class="stat-card">
+            <h3><i class="fas fa-clock text-info"></i> طلبات قيد الانتظار</h3>
+            <div class="number">{{ stats.pending_orders }}</div>
+            <small>بحاجة إلى متابعة</small>
+        </div>
+        
+        <div class="stat-card">
+            <h3><i class="fas fa-money-bill-wave text-danger"></i> إجمالي الإيرادات</h3>
+            <div class="number">{{ stats.total_revenue|floatformat:2 }} <small>ر.س</small></div>
+            <small>قيمة جميع الطلبات</small>
+        </div>
+    </div>
+
+    <!-- الأزرار السريعة -->
+    <div class="quick-actions mb-4">
+        <a href="{% url 'reception:new_order' %}" class="btn btn-success btn-lg">
+            <i class="fas fa-plus-circle"></i> إنشاء طلب جديد
+        </a>
+        <a href="{% url 'reception:patient_list' %}" class="btn btn-primary btn-lg">
+            <i class="fas fa-user-plus"></i> تسجيل مريض جديد
+        </a>
+        <a href="{% url 'reception:order_list' %}" class="btn btn-warning btn-lg">
+            <i class="fas fa-search"></i> البحث عن طلب
+        </a>
+    </div>
+
+    <!-- أحدث الطلبات -->
+    <div class="table-container">
+        <h2><i class="fas fa-history"></i> أحدث الطلبات</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>رقم الطلب</th>
+                    <th>المريض</th>
+                    <th>الطبيب</th>
+                    <th>التاريخ</th>
+                    <th>الحالة</th>
+                    <th>المبلغ</th>
+                    <th>الإجراءات</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for order in recent_orders %}
+                <tr>
+                    <td><strong>{{ order.order_number }}</strong></td>
+                    <td>{{ order.patient.full_name }}</td>
+                    <td>{{ order.referring_doctor.name|default:"-" }}</td>
+                    <td>{{ order.order_date|date:"Y-m-d H:i" }}</td>
+                    <td>
+                        <span class="status-badge status-{{ order.status }}">
+                            {{ order.get_status_display }}
+                        </span>
+                    </td>
+                    <td>{{ order.total_amount|floatformat:2 }} ر.س</td>
+                    <td>
+                        <a href="{% url 'reception:order_detail' order.id %}" class="btn btn-sm btn-primary">
+                            <i class="fas fa-eye"></i> عرض
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="text-center">لا توجد طلبات حالياً</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <div class="text-center mt-3">
+            <a href="{% url 'reception:order_list' %}" class="btn btn-outline-primary">
+                عرض جميع الطلبات <i class="fas fa-arrow-left"></i>
+            </a>
+        </div>
+    </div>
+
+    <!-- أحدث المرضى -->
+    <div class="table-container">
+        <h2><i class="fas fa-user-clock"></i> أحدث المرضى المسجلين</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>الاسم</th>
+                    <th>الجنس</th>
+                    <th>العمر</th>
+                    <th>الهاتف</th>
+                    <th>الطبيب المحول</th>
+                    <th>تاريخ التسجيل</th>
+                    <th>الإجراءات</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for patient in recent_patients %}
+                <tr>
+                    <td>{{ patient.full_name }}</td>
+                    <td>{{ patient.get_gender_display }}</td>
+                    <td>{{ patient.age_display }}</td>
+                    <td>{{ patient.phone|default:"-" }}</td>
+                    <td>{{ patient.referring_doctor.name|default:"-" }}</td>
+                    <td>{{ patient.created_at|date:"Y-m-d" }}</td>
+                    <td>
+                        <a href="{% url 'reception:patient_detail' patient.id %}" class="btn btn-sm btn-primary">
+                            <i class="fas fa-eye"></i> عرض
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="text-center">لا توجد مرضى مسجلين</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <div class="text-center mt-3">
+            <a href="{% url 'reception:patient_list' %}" class="btn btn-outline-primary">
+                عرض جميع المرضى <i class="fas fa-arrow-left"></i>
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
